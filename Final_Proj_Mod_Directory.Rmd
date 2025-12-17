@@ -1,0 +1,4520 @@
+---
+title: 'Final Project: Module Directory'
+author: "Micheal_Gartland"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+# Directory {.tabset}
+Below this, each of my assignments for ESS_523A will be split under tabs, so that if I ever need to go back and find how to perform a specific code chunk, it will be organized for me all within this R Markdown.
+
+## Assignment 1: Exploratory Data Analysis {.tabset}
+
+Here, we learned how to use the setup script, how to load in packages, and perform basic data organization with piping.
+
+
+### Loading
+
+Load packages in with set up script:
+
+```{r}
+source("setup.R")
+```
+
+Load in palmerpenguins data
+```{r}
+data("penguins")
+```
+
+### Data Wrangling
+
+Add a new column
+```{r}
+penguins_mod <- mutate(penguins, animal = "penguins", bill_length_cm = bill_length_mm/10, bill_depth_cm = bill_depth_mm/10, flipper_length_cm = flipper_length_mm/10)
+
+```
+
+Select or remove
+```{r}
+penguins_mod <- select(penguins_mod, -c(bill_length_mm, bill_depth_mm, flipper_length_mm))
+
+```
+
+```{r}
+penguins_select <- select(penguins_mod, c(species, island, sex))
+```
+
+Filter to Adelie species only
+```{r}
+adelie <- filter(penguins_mod, species == "Adelie")
+```
+
+Piping!
+```{r}
+adelie_cm <- penguins %>%
+  mutate(bill_length_cm = bill_length_mm/10, bill_depth_cm = bill_depth_mm/10, flipper_length_cm = flipper_length_mm/10) %>%
+  select(-c(bill_length_mm, bill_depth_mm, flipper_length_mm)) %>%
+  filter(species == "Adelie")
+```
+
+Summarize with group_by and summarize()
+```{r}
+avg_bill <- penguins %>%
+  group_by(species, sex) %>%
+  summarise(mean_bill_length = mean(bill_length_mm, na.rm = TRUE), mean_flipper_length = mean(bill_length_mm))
+```
+
+### Excercises
+
+
+1. why dont the following line(s) of code work? Tweak each one so the code runs
+1a. penguins[1:5, ("species", "island")]
+```{r}
+penguins[1:5, c("species", "island")]
+```
+
+1b. penguins$flipper_lenght_mm
+```{r}
+penguins$flipper_length_mm
+```
+
+1c. penguins[island=='Dream',]
+```{r}
+filter(penguins, island == "Dream")
+```
+
+2. Find the average flipper length for each species. Which species has the largest flipeprs?
+```{r}
+penguins %>%
+  group_by(species) %>%
+  summarise(flipper_length_avg = mean(flipper_length_mm, na.rm = TRUE))
+```
+Gentoo has the largest avgerage flipper length at 217mm. Followed by Chinstrap at 196mm and lastly Adelie at 190mm.
+
+3. Which is the only species that was sampled across all three islands in this study? You must use {dplyr} functions to answer this question (e.g., group_by() ...)
+```{r}
+penguins %>%
+  group_by(species, island) %>%
+  summarise(count = n()) %>%
+  group_by(species) %>%
+  summarise(count = n()) %>%
+  slice_max(count) %>%
+  select(species)
+``` 
+
+4. Reorder the variables in penguins so that year is the first column followed by the rest. (Hint: look into the use of everything()).
+```{r}
+penguins %>%
+  select(year, everything())
+```
+
+5. Create a new column called 'size_group' where individuals with body mass greater than the overall average are called 'large' and those smaller are called 'small'. (Note: This answer requires the additional use of both the if_else() and mean() fucntions. Remember how to deal with NA values in mean()).
+```{r}
+penguins %>%
+  mutate(body_size = if_else(body_mass_g > mean(body_mass_g, na.rm = TRUE),"large", "small"))
+```
+
+6. You want to filter data for years that are not in a vector of given years, but this code doesn't work. Tweak it so that it does. (yes, you could just filter year equal to 2007 in this case, but there is a trouble-shooting lesson here)
+```{r}
+penguins %>%
+  filter(year != c(2008, 2009))
+```
+
+### Visuaization {.tabset}
+
+#### Visualization
+
+visualize variable distributions with geom_histogram
+```{r}
+ggplot(penguins) +
+  geom_histogram(mapping = aes(x = flipper_length_mm))
+```
+
+```{r}
+#histogram example: flipper length by speices
+ggplot(penguins) +
+  geom_histogram(aes(x = flipper_length_mm, fill = species), alpha = 0.5, position = "identity") +
+  scale_fill_manual(values = c("darkorange","darkorchid","cyan4"))
+```
+
+facet_wrap()
+```{r}
+ggplot(penguins) +
+  geom_histogram(aes(x = flipper_length_mm, fill = species), alpha = 0.5, position = "identity") +
+  scale_fill_manual(values = c("darkorange","darkorchid","cyan4")) +
+  facet_wrap(~species)
+```
+
+Compare sample sizes with geom_bar()
+```{r}
+ggplot(penguins) +
+  geom_bar(mapping = aes(x = island, fill = species))
+```
+
+building on bar plot
+```{r}
+ggplot(penguins, aes(x = island, fill = species)) +
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("darkorange","purple","cyan4"),
+                    guide = FALSE) +
+  theme_minimal() +
+  facet_wrap(~species, ncol = 1) +
+  coord_flip()
+```
+
+Visualize variable relationships with geom_point
+```{r}
+ggplot(penguins) +
+  geom_point(mapping = aes(x = body_mass_g, y = flipper_length_mm, color = species))
+```
+
+#### Visualization Excersize
+
+7. Using the visualization techniques you learned today, create a figure that allows you to visualize some comparison of your choice among the penguins data set. Below your figure write a testable hypothesis about the data and the patterns you see from this figure
+```{r}
+penguins %>%
+  filter(!is.na(sex)) %>%
+  mutate(body_mass_kg = (body_mass_g/1000)) %>%
+ggplot() +
+  geom_col(mapping = aes(x = species, y = body_mass_kg, fill = sex),
+           position = "dodge") +
+  facet_wrap(~island)
+```
+
+My hypothesis would be is there a statistcally significant different in body mass between individuals of the same species on different islands?
+
+## Assignment 2: Data Visualization {.tabset}
+
+### Reading CSV File
+
+Load Data
+```{r}
+census_data <- read_csv("data/larimer_census.csv")
+```
+
+### Basic Plots {.tabset}
+
+Basic Plot
+```{r}
+census_data %>% 
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(color = "black")
+```
+
+Specific color and size value
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(color = "red", size = 4, alpha = 0.5)
+```
+
+Size by a variable
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income), color = "red")
+```
+
+Color by a variable
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(color = median_income), size = 4)
+```
+
+#### Title and Limits
+
+Titles and limits
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income), color = "black") +
+  ggtitle("Census Tract socioeconomic data for Larimer County") +
+  xlab("Median Age") +
+  ylab("People of Color (%)") +
+  xlim(c(20, 70)) +
+  ylim(c(0, 35))
+```
+
+
+Titles and limits, but a little different
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income), color = "black") +
+  labs(
+    title = "Census Tract socioeconomic data for Larimer County", 
+    x = "Median Age",
+    y = "People of Color (%)"
+  ) +
+  xlim(c(20, 70)) +
+  ylim(c(0, 35))
+```
+
+#### Themes
+
+Customizing with the Theme function
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income), color = "black") +
+  ggtitle("Census Tract socioeconomic data for Larimer County") +
+  xlab("Median Age") +
+  ylab("People of Color (%)") +
+  theme(
+    plot.title = element_text(size = 16, color = "blue"),
+    axis.title.x = element_text(face = "italic", color = "orange"),
+    axis.title.y = element_text(face = "bold"),
+    panel.grid.major = element_line(color = "black")
+  )
+```
+
+Angle Axis labels
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income), color = "black") +
+  ggtitle("Census Tract socioeconomic data for Larimer County") +
+  xlab("Median Age") +
+  ylab("People of Color (%)") +
+  scale_x_continuous(breaks = seq(15, 90, 5)) +
+  theme(
+    axis.text.x = element_text(angle = 45)
+  )
+```
+
+Theme Minimal
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income), color = "black") +
+  ggtitle("Census Tract socioeconomic data for Larimer County") +
+  xlab("Median Age") +
+  ylab("People of Color (%)") +
+  theme_minimal()
+```
+
+Theme Classic
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income), color = "black") +
+  ggtitle("Census Tract socioeconomic data for Larimer County") +
+  xlab("Median Age") +
+  ylab("People of Color (%)") +
+  theme_classic()
+```
+
+More Themes
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income), color = "black") +
+  ggtitle("Socioeconomic data for Larimer County") +
+  xlab("Median Age") +
+  ylab("People of Color (%)") +
+  ggthemes::theme_wsj() +
+  #this makes the text smaller \/
+  theme(text = element_text(size = 8))
+```
+
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income), color = "black") +
+  ggtitle("Census Tract socioeconomic data for Larimer County") +
+  xlab("Median Age") +
+  ylab("People of Color (%)") +
+  ggthemes::theme_economist()
+```
+
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income), color = "black") +
+  ggtitle("Census Tract socioeconomic data for Larimer County") +
+  xlab("Median Age") +
+  ylab("People of Color (%)") +
+  ggthemes::theme_economist() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+#### Color Changing
+
+Continuous color scales Viridis
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income, color = median_income)) +
+  ggtitle("Census Tract socioeconomic data for Larimer County") +
+  xlab("Median Age") +
+  ylab("People of Color (%)") +
+  viridis::scale_color_viridis()
+```
+
+Color palette RColorBrewer
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income, color = median_income)) +
+  ggtitle("Census Tract socioeconomic data for Larimer County") +
+  xlab("Median Age") +
+  ylab("People of Color (%)") +
+  scale_color_distiller(palette = "Greens", direction = 1)
+```
+
+#### Changing Size
+
+Size using scale_radius
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income, color = median_income)) +
+  ggtitle("Census Tract socioeconomic data for Larimer County") +
+  xlab("Median Age") +
+  ylab("People of Color (%)") +
+  scale_color_distiller(palette = "Greens", direction = 1) +
+  scale_radius(range = c(0.5, 6))
+```
+
+
+#### Cleaning
+
+Legend cleaning
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income, color = median_income)) +
+  ggtitle("Census Tract socioeconomic data for Larimer County") +
+  xlab("Median Age") +
+  ylab("People of Color (%)") +
+  scale_color_distiller(palette = "BuGn", direction = 1) +
+  scale_radius(range = c(2, 6)) +
+  theme_minimal() +
+  #customizing the legend
+  guides(color= guide_legend(title = "Median Income"), size=guide_legend(title = "Median Income"))
+```
+
+Annotation
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income, color = median_income)) +
+  ggtitle("Census Tract socioeconomic data for Larimer County") +
+  xlab("Median Age") +
+  ylab("People of Color (%)") +
+  scale_color_distiller(palette = "BuGn", direction = 1) +
+  scale_radius(range = c(2, 6)) +
+  theme_minimal() +
+  guides(color= guide_legend(title = "Median Income"), size=guide_legend(title = "Median Income")) +
+  #adding annotation
+  annotate(geom = "text", x=76, y = 62, 
+           label = "Rocky Mountain National Park region \n Total Population: 53")
+```
+
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income, color = median_income)) +
+  ggtitle("Census Tract socioeconomic data for Larimer County") +
+  xlab("Median Age") +
+  ylab("People of Color (%)") +
+  scale_color_distiller(palette = "BuGn", direction = 1) +
+  scale_radius(range = c(2, 6)) +
+  theme_minimal() +
+  guides(color= guide_legend(title = "Median Income"), size=guide_legend(title = "Median Income")) +
+  annotate(geom = "text", x=76, y = 62, 
+           label = "Rocky Mountain National Park region \n Total Population: 53") +
+  #adding an arrow
+  geom_curve(
+    aes(
+      x = 82, 
+      xend = 88,
+      y = 60,
+      yend = 57.5
+    ),
+    arrow = arrow(length = unit(0.2, "cm")),
+    size = 0.5,
+    curvature = -0.3
+  )
+```
+
+Finalizing and saving
+```{r}
+census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income, color = median_income), alpha = 0.9) +
+  labs(
+    title = "Socioeconomic data for Larimer County",
+    subtitle = "Median age, median income, and percentage of people of color for each census tract",
+    x = "Median Age",
+    y = "People of Color (%)",
+    caption = "Data obtained from the U.S. Census 5-year American Community Survey Samples for 2017-2021"
+  )+
+  scale_radius(range = c(2, 6)) +
+  theme_classic() +
+  scale_color_viridis() + #use the Viridis palette
+  guides(color = guide_legend(title = "Median Income"),
+         size = guide_legend(title = "Median Income")) +
+  theme(
+    axis.title = element_text(face = "bold", size = 10),
+    plot.title = element_text(face = "bold",size = 15, margin = unit(c(1,1,1,1), "cm")),
+    plot.subtitle = element_text(size = 10, margin = unit(c(-0.5,0.5,0.5,0.5), "cm")),
+    plot.caption = element_text(face = "italic", hjust = -0.2),
+    plot.title.position = "plot", #sets the title to the left
+    legend.position = "bottom",
+    legend.text = element_text(size = 8)
+  ) +
+  annotate(geom = "text",
+           x = 74,
+           y = 62,
+           label = "Rocky Mountain National Park region \n Total Populaion: 53",
+           size = 3,
+           color = "black") +
+  geom_curve(
+    aes(
+      x = 82,
+      xend = 88,
+      y = 60,
+      yend = 57.5
+    ),
+    arrow = arrow(length = unit(0.2, "cm")),
+    size = 0.5,
+    color = "black",
+    curvature = -0.3
+  )
+```
+
+#### Interactive
+
+Interactive
+```{r}
+ggplotly(census_data %>%
+  ggplot(aes(x = median_age, y = percent_bipoc)) +
+  geom_point(aes(size = median_income, color = median_income), alpha = 0.9) +
+  labs(
+    title = "Socioeconomic data for Larimer County",
+    subtitle = "Median age, median income, and percentage of people of color for each census tract",
+    x = "Median Age",
+    y = "People of Color (%)",
+    caption = "Data obtained from the U.S. Census 5-year American Community Survey Samples for 2017-2021"
+  )+
+  scale_radius(range = c(2, 6)) +
+  theme_classic() +
+  scale_color_viridis() + #use the Viridis palette
+  guides(color = guide_legend(title = "Median Income"),
+         size = guide_legend(title = "Median Income")) +
+  theme(
+    axis.title = element_text(face = "bold", size = 10),
+    plot.title = element_text(face = "bold",size = 15, margin = unit(c(1,1,1,1), "cm")),
+    plot.subtitle = element_text(size = 10, margin = unit(c(-0.5,0.5,0.5,0.5), "cm")),
+    plot.caption = element_text(face = "italic", hjust = -0.2),
+    plot.title.position = "plot", #sets the title to the left
+    legend.position = "bottom",
+    legend.text = element_text(size = 8)
+  ) +
+  annotate(geom = "text",
+           x = 74,
+           y = 62,
+           label = "Rocky Mountain National Park region \n Total Populaion: 53",
+           size = 3,
+           color = "black") +
+  geom_curve(
+    aes(
+      x = 82,
+      xend = 88,
+      y = 60,
+      yend = 57.5
+    ),
+    arrow = arrow(length = unit(0.2, "cm")),
+    size = 0.5,
+    color = "black",
+    curvature = -0.3
+  )
+)
+```
+
+
+#### Assignment {.tabset}
+
+
+##### Good plot:
+```{r}
+data <- read_csv("data/Pokemon_Data.csv")
+```
+
+```{r}
+data_M <- data %>%
+  select(-c(Classification,`Original Pokemon ID`, `Alternate Form Name`, `Legendary Type`, `Primary Ability Description`, `Secondary Ability`, `Secondary Ability Description`, `Hidden Ability`, `Hidden Ability Description`, `Special Event Ability`, `Special Event Ability Description`, `Secondary Egg Group`, `Evolution Details`, `Pre-Evolution Pokemon Id` ))
+```
+
+```{r}
+data_G <- data_M %>%
+  mutate(Generation = case_when(
+    `Pokedex Number` >= 1 & `Pokedex Number` <= 151 ~ "1",
+    `Pokedex Number` >= 152 & `Pokedex Number` <= 251 ~ "2",
+    `Pokedex Number` >= 252 & `Pokedex Number` <= 386 ~ "3",
+    `Pokedex Number` >= 387 & `Pokedex Number` <= 493 ~ "4",
+    `Pokedex Number` >= 494 & `Pokedex Number` <= 649 ~ "5",
+    `Pokedex Number` >= 650 & `Pokedex Number` <= 721 ~ "6",
+    `Pokedex Number` >= 722 & `Pokedex Number` <= 809 ~ "7",
+    `Pokedex Number` >= 810 & `Pokedex Number` <= 898 ~ "8",
+    `Pokedex Number` >= 899 & `Pokedex Number` <= 905 ~ "L_A",
+    `Pokedex Number` >= 906 & `Pokedex Number` <= 1025 ~ "9"))
+```
+
+```{r}
+data_G %>%
+  ggplot() +
+  geom_point(mapping = aes(x = `Pokemon Weight`, y = `Pokemon Height`, color = Generation)) +
+  ylim(c(0, 21)) +
+  scale_colour_manual(values = c("red", "gold", "darkblue", "grey", "black", "lightblue","orange", "blue", "purple","darkgreen")) +
+  facet_wrap(~Generation, scales = "free") +
+  labs(
+    title = "Pokemon Height and Weight by Generation",
+    x = "Weight (kg)",
+    y = "Height (m)"
+  ) +
+  theme(
+    plot.title = element_text(size = 16, color = "red"),
+    axis.title.x = element_text(color = "blue"),
+    axis.title.y = element_text(color = "green"),
+    legend.title = element_text(face = "bold", color = "gold")
+  )
+```
+
+
+
+##### Bad plot
+```{r}
+data_G %>%
+  ggplot() +
+  geom_violin(mapping = aes(x = Generation, y = `Defense Stat`, color = "black")) +
+  facet_grid(~`Game(s) of Origin`) +
+  labs(
+    title = "Um... what?",
+    subtitle = "Where'd the title go?",
+    x = "Lines? Time isn't made out of lines. Time is made out of circles, and that is why clocks are round",
+    y = "I have fallen..."
+  ) +
+  guides(color = guide_legend(title = "Why does black = red??")) +
+  dark_theme_classic() +
+  theme(
+    plot.title = element_text(size = 25, color = "yellow4", angle = 87),
+    plot.subtitle = element_text(size = 5, color = "lightgreen"),
+    axis.text.x = element_text(color = "pink", angle = 181),
+    axis.title.y = element_text(color = "purple", angle = 180),
+    axis.title.x = element_text(color = "darkgreen", angle = 180),
+    axis.text.y = element_text(color = "yellow", angle = 210),
+    legend.title = element_text(color = "darkred", angle = 65)
+  )
+```
+
+Two things that are wrong with this bad plot:
+The data is incomprhensible with a set scale, not free scale
+The colors and angles of the labels are all off and wonky
+also, the titles make no sense
+also also, why is my title in the stratosphere?
+
+## Assignment 3: T-Tests and ANOVA {.tabset}
+
+DATA ASSUMPTIONS:
+
+- 20-30 observations per row in comparison
+- If you do not have enough samples, normal distribution must also be met:
+      Shapiro-Wilks test.
+- all samples need to be independent of one another
+- equal variance among the 2 or more categorical groups
+      Levene's test.
+- If you can't meet equal variance assumption:
+  - Transforming the data set:
+    - log(), log(10), sqrt()
+    
+t-test:
+if assumptions are met: t_test(..., var.equal = TRUE)
+if assumptions are NOT met: t_test(..., var.equal = FALSE)
+
+
+ANOVA:
+PARAMETRIC approach if assumptions are met: anova_test()
+NON PARAMETRIC if assumptions are NOT met: kruskal_test()
+
+```{r}
+source("setup.R")
+```
+
+### Explore the dataset
+
+view the data structure
+```{r}
+glimpse(and_vertebrates)
+```
+
+explore the metadata in the Help pane
+```{r}
+?and_vertebrates
+```
+
+### t-test - Compare two means
+
+```{r}
+#create a new variable for downstream analysis
+trout_clean <- and_vertebrates %>%
+  #filter species (remember spelling and capitalization are IMPORTANT)
+  filter(species == "Cutthroat trout") %>%
+  #remove NA values for weight
+  drop_na(weight_g)
+```
+
+```{r}
+trout_clean %>%
+  ggplot(aes(x = section, y = weight_g)) +
+  geom_boxplot()
+```
+
+### Assumptions Test {.tabset}
+```{r}
+trout_clean %>%
+  levene_test(weight_g ~ section)
+```
+
+#### Variable transformation
+```{r}
+hist(trout_clean$weight_g)
+```
+
+```{r}
+trout_clean %>%
+  levene_test(log(weight_g) ~ section)
+```
+
+```{r}
+trout_clean %>%
+  mutate(weight_log = log(weight_g)) %>%
+  t_test(weight_log ~ section, var.equal = TRUE, detailed = TRUE)
+```
+
+```{r}
+trout_clean %>%
+  t_test(weight_g ~ section, var.equal = FALSE, detailed = TRUE)
+```
+
+### ANOVA test - compare more than two means {.tabset}
+```{r}
+#create a new variable to use for downstream analysis
+trout_cc <- trout_clean %>%
+  filter(section == "CC")
+```
+
+```{r}
+trout_cc %>%
+  group_by(unittype) %>%
+  count()
+```
+
+```{r}
+#override out trout_cc cariable with our groups of interest
+trout_cc <- trout_cc %>%
+  #note this line of code is the same as doing filter(!is.na(unittype))
+  drop_na(unittype) %>%
+  filter(unittype %in% c("C", "P", "SC"))
+```
+
+#### Assumptions for ANOVA
+normality:
+```{r}
+trout_cc %>%
+  group_by(unittype) %>%
+  shapiro_test(weight_g)
+```
+
+equal variances
+```{r}
+trout_cc %>%
+  levene_test(weight_g ~ unittype)
+```
+
+```{r}
+trout_cc %>%
+  kruskal_test(weight_g ~ unittype)
+```
+
+```{r}
+trout_cc %>%
+  ggplot(aes(x = unittype, y= weight_g, color = unittype)) +
+  geom_boxplot()
+```
+
+```{r}
+trout_cc %>%
+  #since we are making a histogram, only need an 'x' variable
+  ggplot(aes(x = weight_g)) +
+  geom_histogram() +
+  #separate plot by unittype
+  facet_wrap(~unittype, ncol = 1)
+```
+
+#### Post-Hoc Analysis
+```{r}
+trout_cc %>%
+  dunn_test(weight_g ~ unittype)
+```
+
+
+
+### Excercises
+1. t-test and setup
+```{r}
+salamander_clean <- and_vertebrates %>%
+  filter(species == "Coastal giant salamander") %>%
+  drop_na(length_1_mm)
+```
+
+```{r}
+salamander_clean %>%
+  ggplot(aes(x = section, y = length_1_mm)) +
+  geom_boxplot()
+```
+
+```{r}
+salamander_clean %>%
+  levene_test(length_1_mm ~ section)
+```
+this test shows us that the variances aren't equal, lets see what we can do
+
+
+```{r}
+hist(salamander_clean$length_1_mm)
+```
+we see that the data is slightly skewed, so lets try a log shift
+
+
+```{r}
+salamander_clean %>%
+  levene_test(log(length_1_mm) ~ section)
+```
+however, a log transformation doesn't result in a high enough p-value (0.002) to make the variances equal, so I will be using a welch test, since the variances are not equal
+
+
+```{r}
+salamander_clean %>%
+  t_test(length_1_mm ~ section, var.equal = FALSE, detailed = TRUE)
+```
+
+with a p-value of 1.26e-63, we can reject the null hypothesis can confirm that the snout lengths between forest types are significantly different.
+
+
+2. ANOVA test
+gonna use clear cut forests since, similar to the trout example, the snout length is larger in clear cut forests.
+```{r}
+salamander_cc <- salamander_clean %>%
+  filter(section == "CC")
+```
+
+```{r}
+salamander_cc %>% 
+  group_by(unittype) %>%
+  count()
+```
+
+```{r}
+salamander_cc <- salamander_cc %>%
+  drop_na(unittype) %>%
+  filter(unittype %in% c("C", "P", "SC"))
+```
+
+```{r}
+salamander_cc %>%
+  group_by(unittype) %>%
+  shapiro_test(length_1_mm)
+```
+
+seeing very small p values for all 3 channels, we can see that none of the 3 data sets are normally distributed
+
+```{r}
+salamander_cc %>%
+  levene_test(length_1_mm ~ unittype)
+```
+
+not as small as the shapiro test value, but still well below 0.05, this shows that thte variances of the group aren't equal, meaning we need to do a non-parametric ANOVA test.
+
+```{r}
+salamander_cc %>%
+  kruskal_test(length_1_mm ~ unittype)
+```
+with a p-value of 7.24e-27, we see that at least one group has a significantly longer snout length than another. Box plot time!
+
+```{r}
+salamander_cc %>%
+  ggplot(aes(x = unittype, y = length_1_mm, color = unittype)) +
+  geom_boxplot()
+```
+Well, C and P look larger than SC, but between the 2... no clue. maybe a histogram will help.
+
+```{r}
+salamander_cc %>%
+  ggplot(aes(x = length_1_mm)) +
+  geom_histogram() +
+  facet_wrap(~unittype, ncol = 1)
+```
+This shows that C may be the largest of the 3. lets see what that post-hoc analysis says
+
+```{r}
+salamander_cc %>%
+  dunn_test(length_1_mm ~ unittype)
+```
+
+So, looking at the post-hoc, it tells us that C and P are each significantly different than SC, but that C and P compared to each other are not significantly different than one another, with a p-value of only .823.
+
+## Assignment 4: C-SLR {.tabset}
+
+### filter to salamander {.tabset}
+```{r}
+data("and_vertebrates")
+```
+
+```{r}
+sal <- and_vertebrates %>%
+  #find observations that contain the string "salamander" in the species column
+  filter(str_detect(species, "salamander")) %>%
+  drop_na(length_2_mm, weight_g)
+```
+
+#### EDA
+```{r}
+ggplot(sal) +
+  geom_point(aes(x = length_2_mm, y = weight_g), color = "black") +
+  theme_bw()
+```
+
+#### parametric vs non-parametric correlation tests
+```{r}
+hist(sal$length_2_mm) #slightly skewed
+```
+
+```{r}
+hist(sal$weight_g) #definetly non normal distribution
+```
+
+#### Shapiro test
+```{r}
+sal_sub <- sal %>% slice_sample(n = 5000)
+
+shapiro.test(sal_sub$length_2_mm)
+```
+
+```{r}
+shapiro.test(sal_sub$weight_g)
+```
+
+### Correlation test in R
+```{r}
+cor_test(sal,
+         var = c(length_2_mm, weight_g), #vector of continuous var we want to test
+         alternative = "two.sided", #we want to test both positive and negative corr.
+         method = "spearman") #spearman is for non-parametric corr. method
+```
+
+### Simple linear regression with crabs {.tabset}
+```{r}
+data("pie_crab")
+```
+
+```{r}
+hist(pie_crab$latitude)
+```
+
+```{r}
+hist(pie_crab$size)
+```
+
+#### visualizing
+```{r}
+ggplot(data = pie_crab, aes(x = latitude, y = size)) +
+  geom_point(color = "black") +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_bw()
+```
+
+#### simple linear regression in R
+```{r}
+slr_model <- lm(size ~ latitude, data = pie_crab) #lm(response ~ predictor, data = dataset)
+
+summary(slr_model)
+```
+
+
+#### Predicting crab size
+```{r}
+new_lat <- tibble(latitude = c(32, 36, 38))
+
+predict(slr_model, newdata = new_lat)
+```
+
+### Exercises
+```{r}
+data("ntl_airtemp")
+data("ntl_icecover")
+```
+
+average lake ice duration across years
+```{r}
+avg_icecover <- ntl_icecover %>%
+  #mutate within group by, and create a new variable for the WATER year (Oct - Sept). Water year is the FUTURE year, so we do year + 1
+  group_by(wyear = year + 1) %>%
+  summarise(mean_duration = mean(ice_duration, na.rm = TRUE))
+```
+
+```{r}
+ntl_airtemp_wyear <- ntl_airtemp %>%
+  mutate(wyear = if_else(month(sampledate) < 10, year, year + 1))
+```
+
+```{r}
+ntl_winter_airtemp <- ntl_airtemp_wyear %>%
+  filter(lubridate::month(sampledate) %in% c(11, 12, 1:4)) %>% #filter the months from Nov to April
+  group_by(wyear) %>%
+  summarise(mean_air_temp = mean(ave_air_temp_adjusted))
+```
+
+1. Join your table of (water-)yearly average winter temperatures to our avg_icecover object. Save this new table as icecover_temp. (HINT: use a join() function to do this)
+
+```{r}
+icecover_temp <- ntl_airtemp_wyear %>% inner_join(avg_icecover, by = "wyear")
+```
+
+2. Visualize the data by plotting our variables against one another, and using histograms. Is their relationship linear? Are our variables normally distributed?
+
+```{r}
+icecover_temp %>%
+  ggplot() +
+  geom_point(mapping = aes(x = mean_duration, y = ave_air_temp_adjusted)) +
+  geom_smooth(mapping = aes(x = mean_duration, y = ave_air_temp_adjusted), method = lm)
+#the variables are slightly linear in nature, though with the large range of data points per x-value, it can be hard to tell
+```
+
+
+```{r}
+hist(icecover_temp$mean_duration)
+#roughly normally distributed, though seems ever so slightly skewed
+```
+
+```{r}
+icecover_temp_sub <- icecover_temp %>% slice_sample(n = 5000)
+
+shapiro.test(icecover_temp_sub$mean_duration)
+#or not. With a p-value of 2.2e-16, we are not normally distributed for mean duration
+```
+
+
+```{r}
+hist(icecover_temp$ave_air_temp_adjusted)
+#definitely not normally distributed, but let's check just in case
+```
+
+```{r}
+shapiro.test(icecover_temp_sub$ave_air_temp_adjusted)
+#aparently R really like the number 2.2e-16, since that's been the p-value of both tests in the walkthrough and now both of these, but I guess that means this is also not normally distributed
+```
+
+
+3. Perform a correlation test on icecover_temp to see whether there is a significant relationship between mean ice duration and mean air temperature. If so, is the relationship positive or negative? What is the correlation coefficient?
+
+```{r}
+#since we are not normally distributed in either variable, I'll be doing a non-parametric test
+cor_test(icecover_temp,
+         vars = c(mean_duration, ave_air_temp_adjusted),
+         alternative = "two.sided",
+         method = "spearman")
+```
+
+There seems to be a negative relationship between mean ice duration and mean air temperature, however with a correlation coefficient of -0.048, it suggests a very weak positive relationship, thought with a p-value of 7.84e-30, it does mean its technically statically significant.
+
+4. Develop of simple linear model to then predict the mean ice duration when mean winter temperatures are -2 degrees, 0 degrees, and 2 degrees.
+
+```{r}
+ice_model <- lm(mean_duration ~ ave_air_temp_adjusted, data = icecover_temp)
+
+summary(ice_model)
+```
+
+```{r}
+new_temp <- tibble(ave_air_temp_adjusted = c(-2, 0, 2))
+
+predict(ice_model, newdata = new_temp)
+```
+
+-2 degrees is predicted to have a mean ice cover duration of 102.2805
+0 degrees is predicted to have a mean ice cover duration of 102.0957
+2 degrees is predicted to have a mean ice cover duration of 101.9108
+
+
+
+5. Plot the mean air temperature against the mean ice cover duration. Include our simple linear regression (i.e., the line of best fit) in the plot.
+```{r}
+ggplot(data = icecover_temp, aes(x = ave_air_temp_adjusted, y = mean_duration)) +
+  geom_point(color = "black") +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_bw()
+```
+
+6. What is the slope, intercept, and residual standard error of our simple linear regression?
+
+```{r}
+summary(ice_model)
+```
+
+slope = -0.092433
+intercept = 102.095653
+residual error of our simple linear regression = 18.68 on 55149 degrees of freedom
+
+## Assignment 5: MLR {.tabset}
+
+
+
+### Load in data {.tabset}
+```{r}
+data(pie_crab)
+```
+
+MLR development
+```{r}
+mlr_model <- lm(size ~ latitude + air_temp + water_temp, data = pie_crab)
+
+summary(mlr_model)
+```
+
+#### Predicting crab size
+```{r}
+new_data <- tibble(latitude = c(32, 36, 38),
+                   air_temp = c(20, 12, 9),
+                   water_temp = c(22, 14, 11))
+
+predict(mlr_model, newdata = new_data)
+```
+
+#### MLR Assumptions
+- all observations are independent of one another
+- There must be a linear relationship between the dependent and the independent variables
+- The variance of the residual errors is similar across the value of each independent variable
+  - Residual vs fitted plot (equal variance spread)
+```{r}
+plot(mlr_model, which = 1)
+```
+
+- Q-Q plot: testing if residual error is normally distributed
+```{r}
+plot(mlr_model, which = 2)
+
+residuals(mlr_model)
+
+ggplot() +
+  geom_histogram(aes(residuals(mlr_model)))
+```
+
+
+- No multicollinearity among the variables
+```{r}
+pie_crab %>%
+  select(size, latitude, air_temp, water_temp) %>%
+  cor()
+```
+
+
+### Excercises
+
+
+List of all files
+```{r}
+states <- list.files("data/usgs_gages/",full.names = TRUE, pattern = "*.csv")
+```
+
+
+1. Read in each of the data sets associated with the assignment and combine them into a single data set. (HINT: What does map_dfr() do?)
+
+```{r}
+library(readr)
+data_complete <- map_dfr(states, read_csv)
+```
+
+
+
+2. Using our combined data set, plot each variable against mean annual stream flow to identify variables that seem to have a linear relationship with stream flow.
+
+```{r}
+data(data_complete)
+
+data_long <- data_complete %>%
+  select(-c(site_name, state)) %>%
+  pivot_longer(cols = -annual_streamflow_mm)
+
+ggplot(data = data_long, aes(x = annual_streamflow_mm, y = value)) +
+  geom_point(color = "black") +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~name, scales = "free_y")
+```
+
+
+3. Develop a multiple linear regression model using any combination of the variables in the data set. What is your R-squared value? Which of your variables (if any) are significant predictors of stream flow?
+
+```{r}
+data(data_complete)
+
+mlr_model_state <- lm(annual_streamflow_mm ~ mean_annual_precip + mean_aridity_index + mean_baseflow + mean_soil_organic_matter + mean_soil_permeability + mean_winter_temp + median_ws_elevation + percent_forested + percent_s_facing + percent_urban + percent_wetland + site_elevation + soil_sand_content + ws_area_sqkm, data = data_complete)
+
+summary(mlr_model_state)
+```
+
+
+
+- The R-squared value is 0.954, and adjusted R-squared value is 0.9493
+- looking at our p-values, the only variables that give us p-values under 0.01 are mean_annual_precip, mean_aridity_index, and mean_winter_temp. So those are the only variables that are significant predictors of stream flow.
+
+4. Check to see if your model meets the model assumptions required for MLR.
+
+```{r}
+data(data_complete)
+
+mlr_model_state_reduced <- lm(annual_streamflow_mm ~ mean_annual_precip + mean_aridity_index + mean_winter_temp, data = data_complete)
+
+plot(mlr_model_state_reduced, which = 1)
+```
+
+Reducing our model to only look at the 3 significant predictors, we see that there is an equal distribution of points above and below our line.
+
+```{r}
+plot(mlr_model_state_reduced, which = 2)
+```
+
+Looking at just our significant predictor values, most of the points follow along the line, so our residual assumption is met.
+
+```{r}
+data_complete %>%
+  select(mean_annual_precip, mean_aridity_index, mean_winter_temp) %>%
+  cor()
+```
+
+using the assignment recommendation of not including anything with a correlation greater than 0.7/-0.7, we can see that annual precipitation and aridity index are too highly correlated to one another.
+
+
+5. Use your model to predict the mean annual stream flow for two new sets of predictor data.
+
+```{r}
+new_data_state <- tibble(mean_annual_precip = c(800, 1300, 1600),
+                         mean_aridity_index = c(0.9, 1.3, 1.8),
+                         mean_winter_temp = c(-7, 2, 5))
+
+predict(mlr_model_state_reduced, newdata = new_data_state)
+```
+
+First set of predictions:
+1. 322.5653 ; 2. 616.9691 ; 3. 907.9978
+
+```{r}
+new_data_state_again <- tibble(mean_annual_precip = c(900, 1000, 1100),
+                               mean_aridity_index = c(1, 1.1, 1.2),
+                               mean_winter_temp = c(-3, -2, -1))
+
+predict(mlr_model_state_reduced, newdata = new_data_state_again)
+```
+
+Second set of predictions:
+1. 335.1384 ; 2. 417.0392 ; 3. 498.9400
+
+
+6. If your model does not meet the model's assumptions, what are some ways of manipulating the data so that it might? (HINT: review chapter 6).
+
+
+Looking back at chapter 6, one way to manipulate the data is that, if it is right skewed, we can take the natural log() of the data set to help get closer to an equal variance. If the outliers of the data are too strongly affecting the Q-Q residuals line, we could remove the outliers to help equalize it, but make sure to note that in the report.
+
+## Assignment 6: Power in Stat Analysis {.tabset}
+
+### Power in Action Load in and filter data {.tabset}
+
+```{r}
+data("penguins")
+
+#perform the t-test
+penguins %>%
+  filter(species %in% c("Adelie", "Gentoo")) %>%
+  # species must be reformatted from a factor to a character (t-test doesn't like factors)
+  mutate(species = as.character(species)) %>%
+  t_test(bill_length_mm ~ species, var.equal = FALSE, detailed = TRUE) %>%
+  View()
+```
+
+#### Sample Size cutting data to see if a different sample size effects our results
+
+```{r}
+penguins %>%
+  filter(species %in% c("Adelie", "Gentoo")) %>%
+  mutate(species = as.character(species)) %>%
+  drop_na(bill_length_mm) %>%
+  group_by(species) %>%
+  slice_sample(n = 2) %>%
+  ungroup() %>%
+  t_test(bill_length_mm ~ species, var.equal = FALSE, detailed = TRUE) %>%
+  View()
+```
+
+#### Magnitude of effect
+
+```{r}
+penguins %>%
+  filter(species %in% c("Adelie", "Gentoo")) %>%
+  ggplot() +
+  geom_histogram(aes(x = bill_length_mm, fill = species), alpha = 0.50) +
+  geom_vline(xintercept = 38.8, col = "black") +
+  geom_vline(xintercept = 47.5, col = "black")
+```
+
+magical bill length growth
+
+```{r}
+penguins %>%
+  filter(species %in% c("Adelie", "Gentoo")) %>%
+  mutate(bill_length_mm = if_else(species == "Gentoo", bill_length_mm + 15, bill_length_mm)) %>%
+  ggplot() +
+  geom_histogram(aes(x = bill_length_mm, fill = species), alpha = 0.50) +
+  geom_vline(xintercept = 38.8, col = "black") +
+  geom_vline(xintercept = 62.5, col = "black")
+```
+
+t-test post magical growth
+
+```{r}
+penguins %>%
+  filter(species %in% c("Adelie", "Gentoo")) %>%
+  # still need to convert species to a character for the t_test function
+  mutate(species = as.character(species)) %>%
+  drop_na(bill_length_mm) %>%
+  #if species == Gentoo, add 15 to bill length..
+  mutate(bill_length_mm = if_else(species == "Gentoo", bill_length_mm + 15,
+                                 # otherwise, keep it as is.
+                                 bill_length_mm)) %>%
+  t_test(bill_length_mm ~ species,
+         var.equal = FALSE,
+         detailed =   TRUE) %>%
+  View()
+```
+
+keep magical growth, but redo t-test with smaller sample size.
+
+```{r}
+penguins %>%
+  filter(species %in% c("Adelie", "Gentoo")) %>%
+  mutate(species = as.character(species)) %>% 
+  mutate(bill_length_mm = ifelse(species == "Gentoo", bill_length_mm + 15, bill_length_mm)) %>%
+  # remove NA values for weight
+  drop_na(bill_length_mm) %>%
+  group_by(species) %>%
+  # select 2 random observations from each species:
+  slice_sample(n = 2) %>%
+  ungroup() %>%
+  t_test(bill_length_mm ~ species, var.equal = FALSE, detailed = TRUE) %>% View()
+```
+
+sample size is very important
+
+### Assignment set-up:
+
+```{r}
+data("and_vertebrates")
+
+trout <- 
+  and_vertebrates %>%
+  filter(species == "Cutthroat trout") %>%
+  drop_na(weight_g)
+```
+
+1.  Write a function called trout_subber that takes a user-selected number of random observations (the thing that changes) from our trout data from across both forest types (i.e. section).
+
+HINTS: the number of observations you want to subset to will be an arguement of the function. the code above can be used as a basis of the function. You can refer back to the Write Functions primer lessons for guidance, specifically How to write a funciton.
+
+```{r}
+trout_subber <- function(x) {
+  trout %>%
+    group_by(section) %>%
+    slice_sample(n = x) %>%
+    ungroup()
+}
+
+trout_5 <- trout_subber(5)
+trout_10 <- trout_subber(10)
+trout_1k <- trout_subber(1000)
+trout_5k <- trout_subber(5000)
+```
+
+2.  Build upon the previous function by adding an additional step to perform a t-test on the data set at the end, and return the results of that t-test. (NOTE: for simplicity, use the non-parametric t-test across all sub sets).
+
+```{r}
+trout_subber <- function(x) {
+  trout %>%
+    group_by(section) %>%
+    slice_sample(n = x) %>%
+    ungroup() %>%
+    t_test(weight_g ~ section, var.equal = FALSE, detailed = TRUE)
+}
+
+trout_subber(5)
+trout_subber(10)
+trout_subber(1000)
+trout_subber(5000)
+```
+
+3.  Map over the function above, using our sample sizes of interest (i.e. 5, 10, 1000, 5000 per forest type). Repeat the process 100 times for each sample size to account for variability. The final output of this exercise should be a single data frame with 400 rows (one row for each t-test summary).
+
+HINTS: Make use of the rep() function to create your vector of numbers to map over...
+
+```{r}
+
+trout_all <- rep(c(5, 10, 1000, 5000), 100) %>%
+  map_dfr(~ trout_subber(.x))
+
+```
+
+4.  Using the data frame created in exercise 3, make a histogram of p-values for each sample size group (HINT: see what column name in your final data frame you should use to facet by). Make note of how the p-values and their variance change with sample size.
+
+```{r}
+trout_all %>%
+  ggplot() +
+  geom_histogram(aes(x = p)) +
+  facet_wrap(~n1, scales = "free")
+  
+```
+
+## Assignment 7: Intro to Git-Hub {.tabset}
+
+1.  **FORK:** If you haven't yet, **fork** the Intro-Git-GitHub repo from our class GitHub organization (ENV-Data-Sci-FA25).
+
+    -   Make sure your local repository has all the files/changes your instructors added. To do so go to **your** forked Intro-Git-GitHub repo, in the bar along the top click the 'Sync' dropdown and if the button says 'Update Branch', click it (*you likely will not need to worry about this step but just in case..)*.
+
+2.  **CLONE:** In your forked repo on GitHub (make sure it says {your_username}/Intro-Git-GitHub in the URL) copy the https code and follow the steps we learned to clone a repo from GitHub to your computer.
+
+    -   **Be sure you do not clone into another GitHub folder.** Git does not know how to communicate with GitHub if it is in another git-tracked folder.
+
+3.  **CODE:** Complete the sequence of coding tasks below (to the best of your ability) directly in this .Rmd file.
+
+4.  **Save and PUSH**: Save, Add, Commit, and Push your changes to GitHub.
+
+5.  **PULL REQUEST**: Go to **your** forked Intro-Git-GitHub Repo, click the 'Contribute' drop down at the top and click the 'Open Pull Request' button (if this is grayed out that means you have not pushed any changes to GitHub yet).
+
+    -   Provide a title, short description/notes of your changes, and most importantly under 'Reviewers' on the right, type in the username of your **assigned PR reviewer** (which you can find in the 'PR_reviewer_assignments.md' document in this repository. When you are all set, submit the pull request.
+
+6.  **REVIEW: Review your assigned pull request**. You should receive a notification either via GitHub (you can check by clicking the 'notifications' icon directly next to your profile photo in the upper right corner), or you will receive an email link to the email you registered your GitHub account to.
+
+    Follow [these guidelines for reviewing a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/reviewing-proposed-changes-in-a-pull-request), give some meaningful feedback, and when you're done 'Approve' the pull request (do NOT close or merge).
+    
+### Coding Exercise
+
+Work through the steps below to complete this exercise (to the best of your ability) and then save, add, commit and push this file with your coding edits to your forked repo and follow the instructions above for completing the assignment via creating and reviewing a pull request.
+
+Load in the tidyverse (only package(s) needed for this exercise:
+
+```{r}
+library(tidyverse)
+```
+
+Read in the 'kenya_county_climates.csv' in the 'data/' folder and assign it to an environmental variable.
+
+```{r}
+data <- read_csv("data/kenya_county_climates.csv")
+```
+
+Write a chain of operations that does the following:
+
+1.  `select()` just the columns that have "Precipitation" in the name (so we are only interested in the precipitation data), AND the 'County' column.
+
+2.  `filter()` all the rows where 'Precipitation_585_90' is **greater than** the mean "Precipitation_585_90" for all counties.
+
+3.  `pivot_longer()` so we have one column for all precip values and one column with the value's associated variables (while keeping County as its own column too).
+
+```{r}
+data_clean <- data %>%
+  select(County, contains("Precipitation")) %>%
+  filter(Precipitation_585_90 > mean(Precipitation_585_90)) %>%
+  pivot_longer(cols = -County, names_to = "Precipitation_type") 
+```
+
+Question: How many counties have predicted precip values greater than the total county average?
+
+Using the new dataset created above, create a bar plot of precipitation for each time frame for each county using `facet_wrap()`
+
+```{r}
+data_clean %>%
+  ggplot(aes(x = Precipitation_type, y = value, fill = Precipitation_type)) +
+  geom_bar(position = "dodge", stat = "identity") +
+  facet_wrap(~County)
+  
+```
+
+CHALLENGE:
+
+The chart above is messy since we have so many counties. Instead, use `map()` to create an individual bar plot for each County (hint: create a vector of county names from the data, and building off the ggplot code you made above, add in a line to `filter()` out each county (i.e., .x) before creating the plot. AND, no more need to `facet_wrap()` here).
+
+There are many ways to do this!
+
+```{r}
+
+```
+
+
+## Assignment 8: Debugging and Using AI (unfortunately) {.tabset}
+
+*Tip: View this in the visual editor in RStudio*
+
+You want to re-create the HTML document in the `data/` folder in this repo titled `01-debugging_code.html`. Below is the workflow to do so, ***however*** you will notice if you attempt to render this R Markdown document as is, it does NOT reproduce the `01-debugging_code_output.html` file, and it won't even render until you fix some of the mistakes/missing elements. Therefore, this workflow is not reproducible! Your task is to fix the below coding workflow so that it renders and **exactly** matches the output of `01-debugging_code_output.html` (*including* whether or not certain code chunks and/or outputs are shown).
+
+There are a total of six (6) errors in the workflow below. To complete this assignment, you must: **1)** Identify and describe each of the six errors by updating the list provided below (1.67 points each), and **2)** Fix the errors so that the R Markdown file renders successfully and produces an HTML output that is identical to 01-debugging_code_output.html. Your final submission should be a knitted HTML document that exactly matches the appearance and content of `01-debugging_code_output.html`, except that your version must also include a completed list clearly explaining the six fixes you made.
+
+**List here the 6 errors you had to fix in this workflow:**
+
+1.  no set up script, so tidyverse wasn't loaded, and the piping couldn't work
+
+2.  for first scatter plot, needed to set color = lat
+
+3.  needed to assign object 'hurricanes' to code chunk 4
+
+4.  removed an extra 'r' in hurricane in code chunk 4
+
+5.  added echo = FALSE
+
+6.  in chunk 2, swap color for fill to get correct legend label for histogram
+
+### Workflow data setup
+
+This exploratory workflow uses the `storms` data from the {dplyr} package. This dataset is based on the NOAA Atlantic hurricane database (<https://www.nhc.noaa.gov/data/#hurdat>). The data includes storm tracks of storms from 1975-2022, as well as some characteristics (like wind and air pressure) during their progression. Storms from 1979 onward are measured every six hours during the lifetime of the storm. Storms in earlier years have some missing data. Descriptions of each variable in the dataset can be found with `?storms`.
+
+We read in the data and initially explore its structure:
+
+```{r}
+source("setup.R")
+data("storms")
+glimpse(storms)
+```
+
+Let's first explore wind speed across all the different storm types with a histogram:
+
+```{r warning=FALSE}
+storms %>% 
+  ggplot()+
+  geom_histogram(aes(x = wind, fill = status)) +
+  theme_minimal() +
+  labs(fill = "Storm Type") + 
+  ylab("Count") +
+  xlab("Sustained Wind Speed (knots)") 
+#not bin width, but maybe number of bins? nvm, its a version issue
+```
+
+Now we want to visualize the relationship between pressure and wind speed *across latitudes*, where higher latitudes (blue) indicate locations further north:
+
+```{r warning=FALSE}
+storms %>%
+  ggplot() +
+  geom_point(aes(x = pressure, y = wind, color = lat), alpha = 0.75, cex = 3) +
+  scale_color_gradientn(colors = c( "red", "green", "darkblue")) +
+  theme_minimal() +
+  labs(color = "Latitude") + 
+  xlab("Pressure (millibars)") +
+  ylab("Sustained Wind Speed (knots)") 
+#fill is never specified, shape of points needs to be round, potential alpha reduction
+```
+
+Finally, let's visualize each hurricane's maximum diameter through the years:
+
+```{r}
+# store hurricane diam. data in a new hurricanes object
+hurricanes <- storms %>% 
+  filter(status == 'hurricane') %>%
+  group_by(name, year) %>%
+  summarize(max_force_diameter = max(hurricane_force_diameter)) %>%
+  filter(!is.na(max_force_diameter))
+```
+
+```{r warning=FALSE}
+hurricanes %>%
+  ggplot() +
+  geom_boxplot(aes(x = as.factor(year), y = max_force_diameter), color = "darkblue", fill = "skyblue") +
+  theme_minimal() +
+  xlab("Year") +
+  ylab("Maximum Diameter (Nautical Miles)")
+```
+
+
+### Assignment Questions {.tabset}
+
+Open up your AI bot of choice, and start a fresh "chat". Use this same chat for all questions in this assignment.
+
+#### 1)  
+What AI assistant are you using? Include the specific model/version (e.g., "ChatGPT-4", "Claude 3.5 Sonnet", "Gemini Pro"). **0.5 points**
+
+```         
+***AI ASSISTANT: Llama 4 Scout
+```
+
+#### 2)  
+Have you used AI assistants for coding before? Briefly describe your experience (2-3 sentences). **0.5 points**
+
+```         
+***YOUR RESPONSE: I have not used AI before for anything, let alone for coding. Not a huge fan of the environmental impact they create, but I guess I have to burst that bubble for this assignment.
+```
+
+#### 3)  
+Let's see how well your chat bot does as far as helping with workflow development. Copy and paste this prompt into your chat bot: "***Using {dplyr}'s storms dataset, write code in R to test the hypothesis that tropical depressions have lower air pressures than subtropical depressions.***" **0.5 points**
+
+```         
+***CHAT BOT RESPONSE: 
+
+Testing the Hypothesis
+To test the hypothesis that tropical depressions have lower air pressures than subtropical depressions using the storms dataset from {dplyr}, we can follow these steps:
+
+Load Necessary Libraries
+r
+
+Copy Code
+library(dplyr)
+
+Load the storms Dataset
+The storms dataset is part of the {dplyr} package, so we can load it directly:
+
+r
+
+Copy Code
+data("storms", package = "dplyr")
+
+Filter the Data
+We are interested in depressions, so we filter the data to only include rows where type is either "tropical" or "subtropical" and stage is "depression":
+
+r
+
+Copy Code
+depressions <- storms %>%
+  filter(stage == "depression", type %in% c("tropical", "subtropical"))
+  
+Compare Air Pressures
+Now, we compare the air pressures (pres) of tropical and subtropical depressions:
+
+r
+
+Copy Code
+# Group by type and calculate mean pressure
+mean_pressures <- depressions %>%
+  group_by(type) %>%
+  summarise(mean_pres = mean(pres))
+
+mean_pressures
+
+Statistical Test
+To statistically test the hypothesis, we can perform a two-sample t-test:
+
+r
+
+Copy Code
+# Perform two-sample t-test
+t_test_result <- t.test(pres ~ type, data = depressions)
+
+t_test_result
+
+Interpretation
+The output of the t-test will give us a p-value. If the p-value is below a certain significance level (commonly 0.05), we reject the null hypothesis that the mean air pressures are equal and conclude that tropical depressions have significantly lower air pressures than subtropical depressions.
+
+Complete Code
+r
+
+Copy Code
+library(dplyr)
+
+# Load the storms dataset
+data("storms", package = "dplyr")
+
+# Filter the data
+depressions <- storms %>%
+  filter(stage == "depression", type %in% c("tropical", "subtropical"))
+
+# Compare air pressures
+mean_pressures <- depressions %>%
+  group_by(type) %>%
+  summarise(mean_pres = mean(pres))
+
+# Perform two-sample t-test
+t_test_result <- t.test(pres ~ type, data = depressions)
+
+# Print results
+mean_pressures
+t_test_result
+```
+
+#### 4)  
+We want to make sure the code it gives us looks familiar to us. In class, we use {tidyverse} syntax and the {rstatix} package for running statistical tests. In the same chat thread, copy and paste this prompt: *"**Use the {rstatix} package and {tidyverse} syntax.**"* **0.5 points**
+
+```         
+***CHAT BOT RESPONSE: 
+
+Testing the Hypothesis
+To test the hypothesis that tropical depressions have lower air pressures than subtropical depressions using the storms dataset from {dplyr}, we can follow these steps:
+
+Load Necessary Libraries
+r
+
+Copy Code
+library(tidyverse)
+library(rstatix)
+
+Load the storms Dataset
+The storms dataset is part of the {dplyr} package, so we can load it directly:
+
+r
+
+Copy Code
+data("storms", package = "dplyr")
+
+Filter the Data
+We are interested in depressions, so we filter the data to only include rows where type is either "tropical" or "subtropical" and stage is "depression":
+
+r
+
+Copy Code
+depressions <- storms %>%
+  filter(stage == "depression", type %in% c("tropical", "subtropical"))
+  
+Compare Air Pressures
+Now, we compare the air pressures (pres) of tropical and subtropical depressions:
+
+r
+
+Copy Code
+# Group by type and calculate mean pressure
+mean_pressures <- depressions %>%
+  group_by(type) %>%
+  summarise(mean_pres = mean(pres))
+
+mean_pressures
+
+Statistical Test
+To statistically test the hypothesis, we can perform a two-sample t-test using the t_test function from {rstatix}:
+
+r
+
+Copy Code
+# Perform two-sample t-test
+t_test_result <- depressions %>%
+  t_test(pres ~ type)
+
+t_test_result
+
+Interpretation
+The output of the t-test will give us a p-value. If the p-value is below a certain significance level (commonly 0.05), we reject the null hypothesis that the mean air pressures are equal and conclude that tropical depressions have significantly lower air pressures than subtropical depressions.
+
+Complete Code
+r
+
+Copy Code
+library(tidyverse)
+library(rstatix)
+
+# Load the storms dataset
+data("storms", package = "dplyr")
+
+# Filter the data
+depressions <- storms %>%
+  filter(stage == "depression", type %in% c("tropical", "subtropical"))
+
+# Compare air pressures and perform two-sample t-test
+depressions %>%
+  group_by(type) %>%
+  summarise(mean_pres = mean(pres)) %>%
+  t_test(pres ~ type)
+
+
+```
+
+#### 5)  
+In the workflow above, did the chat bot provide code for determining whether the tropical depression and subtropical depression observations meet all assumptions of the test? **0.5 points**
+
+No, it did not provide code to see if the data met the assumptions of the test.
+
+Chances are, the chat bot performed a parametric or non-parametric t-test, and *maybe* added some basic testing of data assumptions. BUT, time series data almost always has autocorrelation, meaning that observations are correlated with their past values. This violates the independence assumption of a t-test. If the chat bot performed the t-test on an unmodified version of the data, it violated the rules of a t-test.
+
+#### 6)  
+In the same chat thread, ask the chat bot to assess whether the `storms` data meets the assumptions of the selected statistical test it selected: "***Does this workflow assess whether the storms data meets all the assumptions of the selected statistical test?***" **0.5 points**
+
+```         
+***CHAT BOT RESPONSE:
+
+Assumptions of the t-test
+The two-sample t-test assumes:
+
+Independence: Each observation is independent of the others.
+Normality: The data in each group are normally distributed.
+Equal Variances: The variances of the two groups are equal (also known as homoscedasticity).
+
+Assessing Assumptions
+The provided workflow does not explicitly assess these assumptions. To ensure the validity of the t-test results, we should verify that the data meet these assumptions.
+
+Independence
+Independence is often assumed in time-series or spatial data, but it may not hold in this case if there are correlations between storms. However, without additional information, we will assume independence.
+
+Normality
+We can use the shapiro_test function from {rstatix} to check for normality:
+
+r
+
+Copy Code
+depressions %>%
+  group_by(type) %>%
+  shapiro_test(pres)
+  
+If the p-value is below 0.05, we reject the null hypothesis that the data are normally distributed.
+
+Equal Variances
+We can use the levene_test function from {rstatix} to check for equal variances:
+
+r
+
+Copy Code
+depressions %>%
+  levene_test(pres ~ type)
+  
+If the p-value is below 0.05, we reject the null hypothesis that the variances are equal.
+
+Updated Workflow
+r
+
+Copy Code
+library(tidyverse)
+library(rstatix)
+
+# Load the storms dataset
+data("storms", package = "dplyr")
+
+# Filter the data
+depressions <- storms %>%
+  filter(stage == "depression", type %in% c("tropical", "subtropical"))
+
+# Check assumptions
+depressions %>%
+  group_by(type) %>%
+  summarise(mean_pres = mean(pres))
+
+depressions %>%
+  group_by(type) %>%
+  shapiro_test(pres)
+
+depressions %>%
+  levene_test(pres ~ type)
+
+# Perform two-sample t-test if assumptions are met
+depressions %>%
+  t_test(pres ~ type)
+  
+If the assumptions are not met, we may need to consider alternative tests, such as:
+
+Non-parametric tests (e.g., Wilcoxon rank-sum test)
+Transformations to achieve normality
+Tests that do not assume equal variances (e.g., Welch's t-test)
+
+
+```
+
+#### 7)  
+Did the bot change its testing approach? Does it now consider the independence assumption? **0.5 points**
+
+```         
+***YOUR RESPONSE: It is considering all 3 assumptions: independence, normalisty and equal variance. it doesn't give me the code output, but it did update the workflow code chunk to test for the assumptions
+```
+
+####8) 
+Let's test if AI adds unnecessary complexity when simple code would suffice. Ask your AI: *"**Write a function to grab the mean average wind speed and air pressure for any user-specified storm from {dplyr}'s storms dataset.**"* **0.5 points**
+
+```         
+***CHAT BOT RESPONSE: 
+
+Function to Grab Mean Average Wind Speed and Air Pressure
+Here's a function that takes a storm name as input and returns the mean average wind speed and air pressure for that storm:
+
+r
+
+Copy Code
+library(dplyr)
+
+get_storm_summary <- function(storm_name) {
+  # Load the storms dataset
+  data("storms", package = "dplyr")
+  
+  # Filter the data for the specified storm
+  storm_data <- storms %>%
+    filter(name == storm_name)
+  
+  # Check if the storm exists
+  if (nrow(storm_data) == 0) {
+    stop(paste("Storm", storm_name, "not found"))
+  }
+  
+  # Calculate mean average wind speed and air pressure
+  storm_summary <- storm_data %>%
+    summarise(
+      mean_wind_speed = mean(wind),
+      mean_air_pressure = mean(pres)
+    )
+  
+  return(storm_summary)
+}
+
+# Example usage:
+storm_name <- "Katrina"
+storm_summary <- get_storm_summary(storm_name)
+print(storm_summary)
+
+
+Function with Error Handling and Input Validation
+Here's an updated version of the function with error handling and input validation:
+
+r
+
+Copy Code
+library(dplyr)
+
+get_storm_summary <- function(storm_name) {
+  # Check if storm_name is a character string
+  if (!is.character(storm_name)) {
+    stop("storm_name must be a character string")
+  }
+  
+  # Load the storms dataset
+  data("storms", package = "dplyr")
+  
+  # Filter the data for the specified storm
+  storm_data <- storms %>%
+    filter(name == storm_name)
+  
+  # Check if the storm exists
+  if (nrow(storm_data) == 0) {
+    stop(paste("Storm", storm_name, "not found"))
+  }
+  
+  # Check if wind and pres columns exist
+  required_columns <- c("wind", "pres")
+  if (!all(required_columns %in% colnames(storm_data))) {
+    stop(paste("Required columns not found:", paste(required_columns, collapse = ", ")))
+  }
+  
+  # Calculate mean average wind speed and air pressure
+  storm_summary <- storm_data %>%
+    summarise(
+      mean_wind_speed = mean(wind, na.rm = TRUE),
+      mean_air_pressure = mean(pres, na.rm = TRUE)
+    )
+  
+  return(storm_summary)
+}
+
+# Example usage:
+storm_name <- "Katrina"
+storm_summary <- get_storm_summary(storm_name)
+print(storm_summary)
+
+This updated function includes:
+
+Input validation for storm_name
+Error handling for missing storms, required columns, and non-numeric values
+Use of na.rm = TRUE in mean() to handle missing values
+```
+
+#### 9)  
+Examine the AI's code carefully. Does it include any of the following unnecessary elements? Check all that apply. **0.5 points**
+
+-   [ ] Error handling (try-catch, tryCatch, if-else checks for missing data before filtering)
+-   [ ] Nested functions when a single function would work
+-   [X] Extensive comments explaining basic operations
+-   [X] Input validation (checking if storms exists, if it's a data frame, etc.)
+-   [ ] Progress messages or print statements
+-   [X] Saving intermediate objects that are only used once
+-   [ ] Pipe operators when simple assignment would be clearer
+-   [X] Multiple approaches shown ("Method 1", "Method 2")
+
+#### 10) 
+Rewrite the AI's code to be as simple and concise as possible while still accomplishing the task. **1 point**
+
+```{r}
+get_storm_summary <- function(storm_name) {
+  data("storms", package = "dplyr")
+  
+  storm_data <- storms %>%
+    filter(name == storm_name)
+  
+
+  storm_summary <- storm_data %>%
+    summarise(
+      mean_wind_speed = mean(wind),
+      mean_air_pressure = mean(pressure)
+    )
+  
+  return(storm_summary)
+}
+
+# Example usage:
+storm_name <- "Katrina"
+storm_summary <- get_storm_summary(storm_name)
+print(storm_summary)
+
+```
+
+#### 11) 
+Next let's test the chat bot's ability to simplify and improve existing code. Ask the chat bot to "***simplify the messy code below, and remove unnecessary steps.***" **0.5 points**
+
+```{r}
+hurricanes_data <- storms %>% rowid_to_column() %>%
+  filter(status == "hurricane") %>%
+  mutate(storm_year = ifelse(month %in% c(1,2,3,4), as.numeric(year) - 1, as.numeric(year))) %>%
+  group_by(name, storm_year) %>%
+  mutate(n_days = n()) %>%
+  ungroup() %>% 
+  group_by(storm_year) %>%
+  mutate(total_days = sum(n_days, na.rm = TRUE)) %>%
+  arrange(storm_year) %>% 
+  mutate(hurricane_presence = ifelse(is.na(total_days), 0, 1)) %>%
+  # pivot_wider(names_from = "storm_year", values_from = "total_days") %>%
+  # filter(is.numeric(`1975`)) %>%
+  # pivot_longer(-hurricane_presence, names_to = "storm_year", values_to = "total_days") %>%
+  select(c(-hurricane_presence)) %>%
+  ungroup() %>%
+  full_join(., storms) %>%
+  select(rowid, name, year, month, day, hour, lat, long, status, category, wind, pressure, tropicalstorm_force_diameter, hurricane_force_diameter) %>%
+  distinct(, .keep_all = FALSE) %>%
+  filter(status == "hurricane") %>%
+  select(-rowid)
+
+hurricanes_data <- hurricanes_data %>%
+  mutate(
+    season = case_when(
+    month %in% c(6, 7, 8) ~ "Summer",
+    month %in% c(9, 10, 11) ~ "Fall",
+    month %in% c(12, 1, 2) ~ "Winter",
+    month %in% c(3, 4, 5) ~ "Spring",
+    TRUE ~ NA_character_
+  )) %>%
+  drop_na(season)
+
+season_counts <- hurricanes_data %>%
+  count(season)
+
+plotter <- function(dataset){
+  datum <- season_counts
+  ggplot(datum, aes(x = season, y = n, fill = season)) +
+    geom_bar(stat = "identity", alpha = 0.7) +
+    theme_minimal()
+}
+
+plotter(dataset = season_counts)
+```
+
+```         
+***CHAT BOT RESPONSE:
+
+library(dplyr)
+library(ggplot2)
+
+# Filter hurricanes and calculate storm year
+hurricanes_data <- storms %>%
+  filter(status == "hurricane") %>%
+  mutate(
+    storm_year = ifelse(month %in% c(1,2,3,4), as.numeric(year) - 1, as.numeric(year)),
+    season = case_when(
+      month %in% c(6, 7, 8) ~ "Summer",
+      month %in% c(9, 10, 11) ~ "Fall",
+      month %in% c(12, 1, 2) ~ "Winter",
+      month %in% c(3, 4, 5) ~ "Spring",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  drop_na(season) %>%
+  select(name, year, month, day, hour, lat, long, status, category, wind, pressure, tropicalstorm_force_diameter, hurricane_force_diameter)
+
+# Count hurricanes by season
+season_counts <- hurricanes_data %>%
+  count(season)
+
+# Plot hurricanes by season
+ggplot(season_counts, aes(x = season, y = n, fill = season)) +
+  geom_bar(stat = "identity", alpha = 0.7) +
+  theme_minimal()
+  
+  Changes
+Removed unnecessary steps and intermediate variables
+Combined filtering and mutation into a single pipeline
+Used drop_na to remove rows with missing season values
+Removed the plotter function and replaced it with a direct call to ggplot
+Simplified the plot code using ggplot directly on the season_counts data frame.
+```
+
+#### 12) 
+Did the returned code include a description of what the code is doing? If it did, is the description accurate? **0.5 points**
+
+```         
+***YOUR RESPONSE:
+
+Seems pretty accurate to me
+```
+
+#### 13) 
+The code below is an attempt at multiple linear regression for predicting the maximum wind speed of storms, but it doesn't work. Ask the chat bot to ***"fix this broken code"***. **0.5 points**
+
+```{r, eval=FALSE}
+# Can we predict the max wind speed of a storm based on where and when it
+# formed?
+
+# test for correlations
+select(storms %>% c(lat, long, month)) %>%
+  cor()
+
+model_data <- storms %>%
+  group_by(name, year) %>%
+  summarise(
+    peak_wind = max(wind),           
+    start_month = first(month),                   
+    start_long = first(long),
+    start_lat = first(lat)
+  ) 
+
+
+model <- lm(max_wind ~ start_month + start_lat + start_long, data = model_data)
+
+summary(modle)
+
+plot(model, which = 1)
+plot(model, which = 2)
+```
+
+```         
+***CHAT BOT RESPONSE:
+
+# Calculate correlation between lat, long, and month
+cor(storms[, c("lat", "long", "month")])
+
+# Create model data
+model_data <- storms %>%
+  group_by(name, year) %>%
+  summarise(
+    peak_wind = max(wind),
+    start_month = first(month),
+    start_long = first(long),
+    start_lat = first(lat)
+  )
+
+# Fit linear model
+model <- lm(peak_wind ~ start_month + start_lat + start_long, data = model_data)
+
+# Print model summary
+summary(model)
+
+# Plot model diagnostics
+plot(model, which = 1)
+plot(model, which = 2)
+
+Changes
+Fixed the select statement to use storms[, c("lat", "long", "month")] instead of storms %>% c(lat, long, month). The cor function requires a numeric matrix or data frame as input.
+Added a comma between start_long = first(long) and start_lat = first(lat) in the summarise call. This was causing a syntax error.
+Renamed max_wind to peak_wind in the linear model formula to match the column name in model_data.
+Renamed modle to model in the summary call to match the object name.
+Removed the select statement, as it's not necessary. The cor function can be called directly on the columns of interest.
+```
+
+#### 14) 
+Test out the chat bot's response. Does the code now run? **0.5 points**
+
+```{r}
+# Calculate correlation between lat, long, and month
+cor(storms[, c("lat", "long", "month")])
+
+# Create model data
+model_data <- storms %>%
+  group_by(name, year) %>%
+  summarise(
+    peak_wind = max(wind),
+    start_month = first(month),
+    start_long = first(long),
+    start_lat = first(lat)
+  )
+
+# Fit linear model
+model <- lm(peak_wind ~ start_month + start_lat + start_long, data = model_data)
+
+# Print model summary
+summary(model)
+
+# Plot model diagnostics
+plot(model, which = 1)
+plot(model, which = 2)
+
+```
+
+
+```         
+***YOUR RESPONSE:
+
+it works!
+```
+
+#### 15) 
+Ask the chat bot to explore the storms dataset and come up with an interesting finding. Describe what it did in 3-4 sentences. What are your thoughts on the direction it took? Did it provide code, and does it run? **1.5 points**
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+data("storms", package = "dplyr")
+
+head(storms)
+```
+
+```{r, eval=FALSE}
+ggplot(storms, aes(x = pres, y = wind)) +
+  geom_point() +
+  labs(title = "Relationship Between Wind Speed and Pressure",
+       x = "Pressure (mb)",
+       y = "Wind Speed (mph)")
+#didn't work because it abbreviated 'pressure' to 'pres'
+```
+
+```{r}
+top_5_storms <- storms %>%
+  group_by(name) %>%
+  summarise(max_wind = max(wind)) %>%
+  arrange(desc(max_wind)) %>%
+  head(5)
+
+print(top_5_storms)
+```
+
+```{r}
+ggplot(storms, aes(x = factor(category))) +
+  geom_bar() +
+  labs(title = "Distribution of Storms by Category",
+       x = "Category",
+       y = "Count")
+#kinds worked, but kept the NA bar as such, not signifying if that just means its a tropical storm or not.
+```
+
+
+```         
+***YOUR RESPONSE:
+
+All it did was show the relationship between wind speed and pressure vai scatterplot. The it talked about how real world oberservations do reflect what the data says. Lastly it talks about the 5 storms with the highest winds speeds and the number of storms per category, showing how most storms are either tropical storms or category 1 hurricanes.
+See comments at bottom of code chunks 2 and 4 for ai errors.
+```
+
+#### 16) 
+Reflect on your experience with this assignment. What are two strengths and two limitations you observed with the chat bot? **1 point**
+
+```         
+***YOUR RESPONSE: 
+Two strengths I would say are it gives you a solid starting point for code if you're stuck on a problem or don't know how to get a specific outcome, and most of it's code works.
+
+Two limitations would be that it typically adds a lot of unneccesary steps into the code and sometimes it flat out doesn't work due to typos or mis-representing variables.
+```
+
+## Assignment 9: APIs, Functions and Iterations {.tabset} 
+
+An API is software that acts as an intermediary between an online data warehouse (or server) and its users (or clients). As data scientists, APIs provide us a way to request clean and nicely-formatted data that the server will then send to our local computers, all within our RStudio console! To work with APIs, we will need to use two new packages: {httr}, which allows us to communicate with the API's server, and {jsonlite}, which allows us to work with one of the most common API data formats, JSON. Let's go ahead and load in our packages for this lesson:
+
+```{r}
+library(tidyverse)
+library(httr) # new - need to install!
+library(jsonlite) # new - need to install!
+```
+
+```{r}
+source("setup.R")
+```
+
+### NPS Visitation Data {.tabset}
+
+This week, we will be exploring NPS visitor use data across the NPS system as a whole, and across specific park units. Like many institutions, NPS has a server that stores all of this information (as well as many other things), and an API for users to be able to access it.
+
+To utilize the NPS API in R, we first need to explore its [API's data structure](https://irmaservices.nps.gov/). In almost every case, we use URLs to access specific data from APIs. To find the access URL for NPS visitation data, go to [Stats Rest API - Documentation](https://irmaservices.nps.gov/v3/rest/stats/help) (though not very intuitive, the NPS API calls its visitation data set "Stats"). Listed there you will see that all data associated with the "Stats" data set can be accessed using the base URL [**https://irmaservices.nps.gov/v3/rest/stats**](https://irmaservices.nps.gov/v3/rest/stats){.uri}. From there, you can tack on additional html text to access two different data sets: **total/{year}** and **visitation**.
+
+For starters, let's try accessing the **total/{year}**. This data set gives us total monthly visitation across all NPS park units, for a user-selected year:
+
+[**https://irmaservices.nps.gov/v3/rest/stats/total/{YEAR}**](https://irmaservices.nps.gov/v3/rest/stats/total/%7BYEAR%7D){.uri}
+
+If you tried accessing that URL, you'll have noticed it doesn't take you anywhere. This is because the curly brackets {} signify locations in the URL that need to be updated by the user based on their specific needs. I'm curious about visitor use in my birth year, so let's tweak the URL to access visitation data from 1992. In R, we can access this data using {httr}'s `GET()` function, replacing {YEAR} with 1992.
+
+```{r}
+raw_data <- httr::GET(url = "https://irmaservices.nps.gov/v3/rest/stats/total/1992")
+
+glimpse(raw_data)
+```
+
+Viewing the data set as-is, you can see it is not super human-readable. This is because data sent from APIs is typically packaged using JavaScript Object Notation (JSON).
+
+To unpack the data, we will first need to use {httr}'s `content()` function. In this example, we want the data to be extracted as *text,* since this is a data table. Moreover, its encoding is listed as *UTF-8*. The encoding parameter can be found by opening our raw data set in our R console:
+
+```{r}
+raw_data # lists 'UTF-8'
+
+# convert content to text
+unpacked_data <- httr::content(raw_data, as = "text", encoding = "UTF-8") 
+```
+
+Second, we need to transform this string of text, which is still in JSON formatting, into a data frame using {jsonlite}'s `fromJSON()`:
+
+```{r}
+# parse text from JSON to data frame
+final_data <- jsonlite::fromJSON(unpacked_data)
+
+final_data
+```
+
+Hooray, you have now successfully pulled in an online data set using an API! 😁
+
+(... also note, the `UnitCode` and `UnitName` columns are empty - this is because this is parkwide data and there is no unit code or unit name associated with the entire NPS system. Just a weird NPS data structure thing!)
+
+#### Exercise #1 
+
+**Using the code above as a starting point, pull in monthly NPS-wide visitation data for the years 1980, 1999, and 2018.**
+
+```{r}
+raw_data_80 <- httr::GET(url = "https://irmaservices.nps.gov/v3/rest/stats/total/1980")
+
+unpacked_data_80 <- httr::content(raw_data_80, as = "text", encoding = "UTF-8")
+
+final_data_80 <- jsonlite::fromJSON(unpacked_data_80)
+
+final_data_80
+```
+
+```{r}
+raw_data_99 <- httr::GET(url = "https://irmaservices.nps.gov/v3/rest/stats/total/1999")
+
+unpacked_data_99 <- httr::content(raw_data_99, as = "text", encoding = "UTF-8")
+
+final_data_99 <- jsonlite::fromJSON(unpacked_data_99)
+
+final_data_99
+```
+
+```{r}
+raw_data_18 <- httr::GET(url = "https://irmaservices.nps.gov/v3/rest/stats/total/2018")
+
+unpacked_data_18 <- httr::content(raw_data_18, as = "text", encoding = "UTF-8")
+
+final_data_18 <- jsonlite::fromJSON(unpacked_data_18)
+
+final_data_18
+```
+
+#### Exercise #2 {.tabset}
+
+**Now, let's explore the second NPS visitation data set, [visitation](https://irmaservices.nps.gov/v3/rest/stats/help/operations/FetchVisitation). This call pulls in monthly data for a specific park, across a specific time frame. Use your new API skills to pull in visitation data for Rocky Mountain National Park from 2010 through 2024, based on the API's URL template. The unit code for Rocky Mountain National Park is ROMO. (Hint: an API URL can have multiple sections that need to be updated by the user; this one requires the starting month and year, the ending month and year, and the park unit of interest.)**
+
+```{r}
+new_data <- httr::GET(url = "https://irmaservices.nps.gov/v3/rest/stats/visitation?unitCodes=ROMO&startMonth=01&startYear=2010&endMonth=12&endYear=2024")
+
+glimpse(new_data)
+```
+
+```{r}
+newer_data <- httr::content(new_data, as = "text", encoding = "UTF-8")
+
+newest_data <- jsonlite::fromJSON(newer_data)
+
+newest_data
+```
+
+##### Functions
+
+You may find yourself thinking, *"Wow, exercise 1 was overkill!"* Indeed, you had to run several lines of code that were nearly identical to what was shown upstream; the only thing you needed to change from one year to the next was the year itself. This sort of redundant coding is not good coding practice. Instead of copying and pasting many coding steps over and over again and tweaking just a tiny portion of it, we can write ***functions*** that combine many coding steps into just one command. The benefits of reducing redundant code in this way are threefold. As Grolemund & Wickham describe in their book, [*R for Data Science*](https://r4ds.had.co.nz/):
+
+> 1.  It's easier to see the intent of your code, because your eyes are drawn to what's different, not what stays the same.
+> 2.  It's easier to respond to changes in requirements. As your needs change, you only need to make changes in one place, rather than remembering to change every place that you copied-and-pasted the code.
+> 3.  You're likely to have fewer bugs because each line of code is used in more places.
+
+*Functions* provide the option of changing just a minor part of the code base from one run to the next. Think of the `GET()` function in {httr}: it is a function that has code under-the-hood so that it isn't necessary to write out the raw code each time we use it. Instead, we call out the function's name (`GET()`), and the necessary argument within that function that tweaks the code to fit it to our needs (`url = "<SOME_URL_WE_CHOOSE>"`).
+
+##### Functionize API Pulls
+
+Let's try making a function called `parkwide_visitation()` that pulls in NPS-wide visitation data for a year of choice. To develop a function requires specific formatting:
+
+```{r, eval = F}
+<NAME> <- function(<ARGUMENTS>){
+  
+  <ACTIONS>
+  
+  return(<OUTPUT>)
+
+  }
+```
+
+... where NAME is what we want to name the function; ARGUMENTS are the variables in the code that get "tweaked"; ACTIONS are the lines of code we want the function to perform (which includes our ARGUMENTS); and the OUTPUT is the object we want as the final outcome of running the function.
+
+For `parkwide_visitation()`, we will use our upstream code as the basis for our function, but with a few minor yet extremely important tweaks:
+
+```{r}
+parkwide_visitation <- function(year){
+
+# pull in the data
+raw_data <- httr::GET(url = 
+                        # parse out year so that it can be chosen with the "year"
+                        # argument, using paste0()
+                        paste0("https://irmaservices.nps.gov/v3/rest/stats/total/", year))
+
+# convert content to text
+extracted_data <- httr::content(raw_data, as = "text", encoding = "UTF-8") 
+
+# parse text from JSON to data frame
+final_data <- jsonlite::fromJSON(extracted_data)
+
+return(final_data)
+
+}
+```
+
+In the above function, our first object, `raw_data`, now changes based on how we define our year argument. We accomplish this through `paste0()`, which takes listed objects, transforms them into characters (if they aren't already), and concatenates them into a single character string. For example:
+
+```{r}
+my_sentence <- "I need at least"
+my_other_sentence <- "pints of ice cream a day"
+
+paste0(my_sentence, " ", 08, " ", my_other_sentence, "!")
+```
+
+So, if we make `year = 2021` in our `parkwide_visitation()` function, the year object becomes the number 2021, which makes the `paste0()` output "<https://irmaservices.nps.gov/v3/rest/stats/total/2021>", which subsequently pulls data for 2021. In other words, we can now pull visitation data for any year with just one line of code!
+
+```{r}
+pull_2018 <- parkwide_visitation(year = 2018)
+
+pull_1980 <- parkwide_visitation(year = 1980)
+
+pull_1992 <- parkwide_visitation(year = 1992)
+
+# ... and so on!
+```
+
+#### Exercise #3 
+
+**Create a function called `unit_visitation()` that pulls park-specific visitation data for any park, across any time frame. For a list of all park codes for testing the function, download [this spreadsheet](https://www.nps.gov/aboutus/foia/upload/NPS-Unit-List.xlsx). (Hint 1: functions can have multiple arguments. For this step, you will want arguments representing the start and end month and year, and park unit. Hint 2: Exercise 2 should be used as a starting point for making this function.)**
+
+```{r}
+unit_visitation <- function(park, startmonth, startyear, endmonth, endyear){
+  base_data <- httr::GET(url = paste0("https://irmaservices.nps.gov/v3/rest/stats/visitation?unitCodes=",park,"&startMonth=",startmonth,"&startYear=",startyear,"&endMonth=",endmonth,"&endYear=",endyear))
+  
+  extracted_data <- httr::content(base_data, as = "text", encoding = "UTF-8")
+  
+  final_data <- jsonlite::fromJSON(extracted_data)
+  
+  return(final_data)
+}
+```
+
+#### Exercise #4 {.tabset}
+
+**Using `unit_visitation()`, pull in visitation data for Rocky Mountain National Park (ROMO), Everglades National Park (EVER), and Theodore Roosevelt National Park (THRO) from November 1992 through December 2024.**
+
+```{r}
+pull_ROMO <- unit_visitation(park = "ROMO", startmonth = 11, startyear = 1992, endmonth = 12, endyear = 2024)
+
+pull_EVER <- unit_visitation(park = "EVER", startmonth = 11, startyear = 1992, endmonth = 12, endyear = 2024)
+
+pull_THRO <- unit_visitation(park = "THRO", startmonth = 11, startyear = 1992, endmonth = 12, endyear = 2024)
+```
+
+##### Function Defaults
+
+Look at the code that you just wrote; writing out all of those unchanging date arguments still feels repetitive, right? When developing functions, there is an option for setting default values for arguments so that you don't necessarily have to write all of them out every time you run it in the future. But, the option still exists within the function to make changes when necessary. For example, let's tweak our `parkwide_visitaion()` function to have the default year be 2024:
+
+```{r}
+parkwide_visitation <- function(year = "2024") {
+
+raw_data <- httr::GET(url = paste0("https://irmaservices.nps.gov/v3/rest/stats/total/", year))
+
+# convert content to text
+extracted_data <- httr::content(raw_data, as = "text", encoding = "UTF-8") 
+
+# parse text from JSON to data frame
+final_data <- jsonlite::fromJSON(extracted_data)
+
+return(final_data)
+
+}
+
+parkwide_visitation()
+```
+
+Because the default year is 2024, you don't have to write it out explicitly in the function (so long as that's the year you're interested in). But, you still have the option of changing the year to something else:
+
+```{r}
+parkwide_visitation(year = "1992")
+```
+
+#### Exercise #5 
+
+**For our `unit_visitation()` function, make the default arguments for the start and end months January and December, respectively. This way, we are automatically pulling in data for an entire year. Then, rerun the updated `unit_visitation()` function for ROMO, EVER, and THRO for the 1980-2024 time period to make sure it works properly.**
+
+```{r}
+unit_visitation <- function(park, startmonth = 01, startyear, endmonth = 12, endyear){
+  base_data <- httr::GET(url = paste0("https://irmaservices.nps.gov/v3/rest/stats/visitation?unitCodes=",park,"&startMonth=",startmonth,"&startYear=",startyear,"&endMonth=",endmonth,"&endYear=",endyear))
+  
+  extracted_data <- httr::content(base_data, as = "text", encoding = "UTF-8")
+  
+  final_data <- jsonlite::fromJSON(extracted_data)
+  
+  return(final_data)
+}
+
+pull2_ROMO <- unit_visitation(park = "ROMO", startyear = 1980, endyear = 2024)
+pull2_EVER <- unit_visitation(park = "EVER", startyear = 1980, endyear = 2024)
+pull2_THRO <- unit_visitation(park = "THRO", startyear = 1980, endyear = 2024)
+
+```
+
+### Iterations {.tabset}
+
+At this point, we now know how to develop functions so that we do not have to keep writing out redundant steps in a workflow. However, in that last exercise, you can see that we are *still* writing out redundant code; we are performing the exact same function on each of our three park units.
+
+Another tool for reducing redundancy is **iteration**, which allows you to do the same thing on multiple inputs. Iteration can happen across different objects, different rows, different data frames, the list goes on and on!
+
+#### For loops
+
+A `for` loop is base R's iteration tool that executes code across a vector, an array, a list, etc. To save the outcome of each iteration, you must first create a vector to store the outputs in that is sized based on how many objects you want to iterate over. For example, I want to run our `parkwide_visitation()` function over the last five years: 2019, 2020, 2021, 2022, 2023, and 2024. To do that, I will first need to develop a vector listing each year:
+
+```{r}
+years <- c('2019', '2020', '2021', '2022', '2023', '2024')
+# ... or:
+years <- 2019:2024
+```
+
+... and then develop an empty list to store each year's `parkwide_visitation()` results (i.e., output) into:
+
+```{r}
+output_floop <- vector("list", length = length(years))
+```
+
+Now that we have a place to store each year's function results, we can move forward with the `for` loop itself:
+
+```{r}
+for(i in 1:length(years)){
+  
+  output_floop[[i]] <- parkwide_visitation(year = years[i])
+  
+}
+```
+
+... where `years[i]` tells the `for` loop to perform `parkwide_visitation()` on the *i^th^* year (think of *i* as the vector position, moving across each year), and `output_floop[[i]]` directs the `for` loop to store the results of the *i^th^* year's run into `output`'s *i^th^* list (think of `output_floop[[i]]` as the location in `output_floop` that the *i^th^*'s results go).
+
+We now have a list containing five data frames: one for each year of visitation data:
+
+```{r}
+summary(output_floop)
+```
+
+Because each year's output is structured identically, we can confidently combine each year's data frame into a single data frame using `dplyr::bind_rows()`:
+
+```{r}
+multi_years <- dplyr::bind_rows(output_floop)
+```
+
+#### Exercise #6 
+
+**Use a for loop to run `unit_visitation()` with arguments `start_year = 1980` and `end_year = 2024` across ROMO, EVER, and THRO. Then, create a single data frame containing each park units' output. (Hint: Your first step will be to create a vector listing each park unit.)**
+
+```{r}
+unit_visitation <- function(park, startmonth = 01, startyear = 1980, endmonth = 12, endyear = 2024){
+  base_data <- httr::GET(url = paste0("https://irmaservices.nps.gov/v3/rest/stats/visitation?unitCodes=",park,"&startMonth=",startmonth,"&startYear=",startyear,"&endMonth=",endmonth,"&endYear=",endyear))
+  
+  extracted_data <- httr::content(base_data, as = "text", encoding = "UTF-8")
+  
+  final_data <- jsonlite::fromJSON(extracted_data)
+  
+  return(final_data)
+}
+
+parks <- c("ROMO", "EVER", "THRO")
+output_floof <- vector("list", length = length(parks))
+for(i in 1:length(parks)){
+  
+  output_floof[[i]] <- unit_visitation(park = parks[i])
+  
+}
+
+multi_parks <- dplyr::bind_rows(output_floof)
+```
+
+### Mapping {.tabset}
+
+The {tidyverse}'s {purrr} package has its own iteration function, `map()`, that is a variation of the `for` loop. `map()` takes a vector and applies a single function across it, then automatically stores all of the results into a list. In other words, `map()` creates an appropriately sized list to store our results in for us. This eliminates the need to create an empty list ahead of time.
+
+To create the same output as our previous `for` loop on `parkwide_visitation()`, but using `map()` instead, we would run the following code:
+
+```{r}
+output_map <- years %>% 
+  map(~ parkwide_visitation(year = .x))
+```
+
+... where `~` indicates that we want to perform `parkwide_visitation()` across all years, and `.x` indicates that we want to use our piped vector, `years`, as the input to the `year` argument. As you can see, `output_map` is identical to `output_floop`:
+
+```{r}
+identical(output_floop, output_map)
+```
+
+... which means we can also `bind_rows()` to get the mapped output into a single data frame:
+
+```{r}
+multi_years <- bind_rows(output_map)
+```
+
+#### Exercise #7 
+
+**Use `map()` to run `unit_visitation()` with arguments `start_year = 1980` and `end_year = 2024` across ROMO, EVER, and THRO. Then, create a single data frame containing each park units' output.**
+
+```{r}
+output_map1 <- parks %>%
+  map(~ unit_visitation(park = .x))
+
+multi_parks2 <- bind_rows(output_map1)
+```
+
+### Data Wrangling and Visualization {.tabset}
+
+In the last lesson, we learned how to pull data from an API and reduce redundancies in our workflows through functions and iteration. In this lesson we will use the functions in the previous lesson to learn how to manipulate data frames with the {tidyverse}, and plot elegant time series graphs with the {ggplot2}, {scales} and {plotly} packages.
+
+There are **five exercises** in this lesson that must be completed. Plus, a bonus question worth 2 points of extra credit. 😄
+
+#### Pulling in necessary packages and data sets
+
+```{r}
+source("setup.R")
+```
+
+
+```{r}
+library(tidyverse) # ggplot2 is included in the {tidyverse}
+library(httr)
+library(jsonlite)
+library(plotly) # new - need to install!
+library(scales) # new - need to install!
+```
+
+Using the `parkwide_visitation()` function from the last lesson and mapping, let's pull park-wide visitor data from 1980-2024, and name the final object `parkwide`. (Code hack: we can use `1980:2024` to create a vector of years so we don't have to write each year out!)
+
+```{r}
+parkwide_visitation <- function(year){
+
+# pull in the data
+raw_data <- httr::GET(url = 
+                        # parse out year so that it can be chosen with the "year" argument, using paste0()
+                        paste0("https://irmaservices.nps.gov/v3/rest/stats/total/", year))
+
+# convert content to text
+extracted_data <- httr::content(raw_data, as = "text", encoding = "UTF-8") 
+
+# parse text from JSON to data frame
+final_data <- jsonlite::fromJSON(extracted_data)
+
+return(final_data)
+
+}
+
+years <- (1980:2024)
+
+parkwide <- years %>% 
+  map(~ parkwide_visitation(year = .x)) %>% 
+  bind_rows()
+```
+
+#### Exercise #1
+
+**Using the `unit_visitation()` function from the last lesson and mapping, pull visitor data from 1980-2024 for the following park units: ROMO, ACAD, LAKE, YELL, GRCA, ZION, OLYM, and GRSM. Name the final output `units`.**
+
+```{r}
+unit_visitation <- function(park, startmonth = 01, startyear = 1980, endmonth = 12, endyear = 2024){
+  base_data <- httr::GET(url = paste0("https://irmaservices.nps.gov/v3/rest/stats/visitation?unitCodes=",park,"&startMonth=",startmonth,"&startYear=",startyear,"&endMonth=",endmonth,"&endYear=",endyear))
+  
+  extracted_data <- httr::content(base_data, as = "text", encoding = "UTF-8")
+  
+  final_data <- jsonlite::fromJSON(extracted_data)
+  
+  return(final_data)
+}
+
+parks <- c("ROMO", "ACAD", "LAKE", "YELL", "GRCA", "ZION", "OLYM", "GRSM")
+output_floof <- vector("list", length = length(parks))
+for(i in 1:length(parks)){
+  
+  output_floof[[i]] <- unit_visitation(park = parks[i])
+  
+}
+
+multi_parks <- dplyr::bind_rows(output_floof)
+
+output_map1 <- parks %>%
+  map(~ unit_visitation(park = .x))
+
+units <- bind_rows(output_map1)
+```
+
+### Exploring our data {.tabset}
+
+Look at the data frame structure of `parkwide` and `units`; they're exactly the same! So let's go ahead and bind those together:
+
+```{r}
+visitation <- bind_rows(parkwide, units)
+```
+
+... except, the rows in `parkwide`'s UnitCode and UnitCode columns are empty. 😑 Let's fix the `UnitCode` column to list "Parkwide" using `mutate()` and an `if_else()` statement:
+
+```{r}
+visitation <- visitation %>% mutate(UnitCode = if_else(is.na(UnitCode), "Parkwide", UnitCode))
+```
+
+Think of the above `if_else()` operation as: "If the column `UnitCode` is `NA`, replace `NA` with "`Parkwide`". Otherwise, preserve what is already in the `UnitCode` column."
+
+Now that we have a single data set containing all of the NPS recreational visitation data that we've pulled, let's start exploring it! But first, let's aggregate the monthly data into annual data using `group_by()` and `summarize()`:
+
+```{r}
+annual_visitation <- visitation %>%
+  group_by(UnitCode, Year) %>% 
+  # we only care about recreational visitors:
+  summarize(RecVisitation = sum(RecreationVisitors))
+
+annual_visitation
+```
+
+What does visitation data look like through time? First we can try to graph all of the park units together:
+
+```{r}
+ggplot(data = annual_visitation)+
+  geom_point(aes(x = Year, y = RecVisitation, color = UnitCode)) +
+  geom_path(aes(x = Year, y = RecVisitation, color = UnitCode)) +
+  scale_y_continuous(labels = scales::label_scientific()) +
+  theme_bw(base_size = 10)
+```
+
+... yikes, not surprisingly, parkwide recreational visitation is wayyyy higher than our individual unit's visitation data, making our graph pretty useless. It might be nice to have each park unit in a graph of its own.
+
+We can create individual graphs for each unit using `facet_wrap()`, and we can set the y-axes for each plot to `"free_y"`:
+
+```{r}
+ggplot(data = annual_visitation) +
+  geom_point(aes(x = Year, y = RecVisitation, color = UnitCode)) +
+  geom_path(aes(x = Year, y = RecVisitation, color = UnitCode)) +
+  scale_y_continuous(labels = scales::label_scientific()) +
+  facet_wrap(~UnitCode, scales = "free_y") +
+  theme_bw(base_size = 10)
+```
+
+We can also make this plot interactive by feeding it into {plotly}'s `ggplotly()` function:
+
+```{r}
+plotly::ggplotly(
+  ggplot(data = annual_visitation) +
+    geom_point(aes(x = Year, y = RecVisitation, color = UnitCode)) +
+    geom_path(aes(x = Year, y = RecVisitation, color = UnitCode)) +
+    scale_y_continuous(labels = scales::label_scientific()) +
+    facet_wrap(~UnitCode, scales = "free_y") +
+    theme_bw(base_size = 10)
+)
+```
+
+#### Exercise #2 
+
+**Create an interactive graph with two separate panes: one showing park-wide visitation, the other showing all the individual park units. Both panes should have different y-axes.**
+
+```{r}
+annual_visitation <- annual_visitation %>%
+  mutate(UnitTrue = if_else(UnitCode == "Parkwide", "Parkwide", "Units"))
+
+plotly::ggplotly(
+  ggplot(data = annual_visitation) +
+    geom_point(aes(x = Year, y = RecVisitation, color = UnitCode)) +
+    geom_path(aes(x = Year, y = RecVisitation, color = UnitCode)) +
+    scale_y_continuous(labels = scales::label_scientific()) +
+    facet_wrap(~UnitTrue, scales = "free_y") +
+    theme_bw(base_size = 10)
+)
+```
+
+It is pretty clear that some park units get orders of magnitude more visitors than others. But just how much of the total park visitation do each of these parks account for from year to year? Here we walk through two methods to tackle this question, ***pivoting*** and ***joining***, to get park unit visitation side-by-side with park-wide data.
+
+### Pivoting {.tabset}
+
+Currently, our annual visitation data is considered *long* because we have all of our NPS visitation data in one column, with multiple rows representing the same year. We can make this data *wide* by using the function `pivot_wider()`
+
+```{r}
+wide_data <- annual_visitation %>%
+  select(Year, UnitCode, RecVisitation) %>%
+  pivot_wider(., names_from = UnitCode, values_from = RecVisitation)
+```
+
+... where `names_from` represents the column with the values you are hoping to spread into new columns, and `values_from` represents the data you want to fill these new columns with.
+
+We can make the data set *long* again by using the function `pivot_longer()`:
+
+```{r}
+long_data <- wide_data %>%
+  pivot_longer(cols = -Year,
+               names_to = "Park",
+               values_to = "RecVisitation")
+```
+
+... where `cols` are the columns we want to gather into one column (or, the column(s) you DON'T want to gather), while `names_to` and `values_to` are the names and values for the new columns produced from the pivot.
+
+#### Exercise #3 
+
+**Using `wide_data` as the starting point, create an interactive time series plot showing the annual percentage of the total recreational visitation made up by all park units. In other words, a visual that allows us to see how much each park unit contributes to the total NPS system's recreational visitation.**
+
+```{r}
+ long_data2 <- wide_data %>%
+  pivot_longer(cols = -Year,
+               names_to = "Park",
+               values_to = "RecVisitation")
+
+plotly::ggplotly(
+  ggplot(data = long_data2) +
+    geom_col(mapping = aes(x = Year, y = RecVisitation, fill = Park, alpha = 0.5), position = "identity")
+)
+ 
+```
+
+### Joining {.tabset}
+
+Another way of getting park-wide visitation side-by-side with the park unit data is through the use of joining our original `units` and `parkwide` data sets:
+
+```{r}
+joined_data <- inner_join(x = units,
+                          # Let's put "Parkwide" in the UnitCode column so it isn't empty
+                          y = parkwide %>% mutate(UnitCode = "Parkwide"),
+                          by = c("Year", "Month"))
+```
+
+... where `x` and `y` are the two data sets you want joined, and `by` indicates the column(s) to match them by. When the two data sets you are trying to join have other columns that have the same name, the original column names get ".x" and ".y" appended to them according to their position in the join. Note: there are several ways of joining data. Explore them with `` ?`mutate-joins` `` and `` ?`filter-joins` ``.
+
+#### Exercise #4 
+
+**Using `joined_data` as the starting point, create an interactive time series plot showing the annual percentage of the total recreational visitation made up by each park unit. This plot should look nearly identical to the previous plot.**
+
+```{r}
+joined_data <- joined_data %>%
+  mutate(Percent = round((RecreationVisitors.x / RecreationVisitors.y) * 100, 4))
+
+plotly::ggplotly(
+  ggplot(data = joined_data) +
+    geom_col(mapping = aes(x = Year, y = Percent, fill = UnitCode.x), position = "dodge")
+)
+ 
+```
+
+#### Exercise #5 
+
+**Which park on average has the most recreational visitation? Which park has the least recreational visitation? Base your response on the data starting in 1990, ending in 2024. Defend your answer with numbers!**
+
+```{r}
+summary <- long_data %>%
+  filter(Year == 1990:2024) %>%
+  group_by(Park) %>%
+  summarise(mean = mean(RecVisitation))
+
+#looking at the summary table I created, the park with the most mean recreational visitation is LAKE, at 7,668,689; and the park with the lowest mean visitation is ACAD, at 2,051,484
+```
+
+## Assignment 10: Geospatial {.tabset}
+
+### Spatial Intro {.tabset}
+
+#### 1. Spatial Data Formats
+
+**Vector Data**
+
+-   Locations (points)
+
+    -   Coordinates, address, country, city
+
+-   Shapes (lines or polygons)
+
+    -   Political boundaries, roads, building footprints, water bodies
+
+**Raster Data**
+
+-   Images (matrix of cells organized by rows and columns)
+
+    -   Satellite imagery, climate, landcover, elevation
+
+        ![](spatial_formats.png){width="50%"}
+
+#### 2. Import and manipulate spatial data {.tabset}
+
+There are a few new R packages we will need to work with spatial data, listed below with hyperlinks and decribed in more detail throughout this and other lessons.
+
+-   `sf` : working with vector data
+
+-   `terra` : working with raster data
+
+-   `tmap` : visualizing spatial data (i.e., making maps!)
+
+-   `mapview`: Another common visualization package
+
+-   `leaflet`: One more, very powerful, interactive mapping package
+
+-   `tigris` : import vector data from the U.S. Census database (i.e., political boundaries, roads, etc.)
+
+-   `elevatr` : import elevation data
+
+-   `rgbif` (optional, for bonus exercise) : import species occurrence data from the GBIF database
+
+-   `soilDB` (optional, for bonus exercise) : import snow depth data from SNOTEL sites across the U.S.
+
+We've already added these packages to a 'setup.R' script in this project directory, so you can use `source("setup.R")` at the beginning of each lesson if you want, otherwise you will need to install each new one manually with `install.packages()`.
+
+```{r}
+source("setup.R")
+```
+
+##### 2.1 Vector Data {.tabset}
+
+ [`tigris`](https://github.com/walkerke/tigris)
+
+###### **Polygons**
+
+All the data we are working with in this lesson is confined to the state of Colorado. Let's start by pulling in political boundaries for Colorado counties with the `tigris` package, which returns a shapefile consisting of polygons for each county.
+
+```{r}
+# download county shapefile for the state of Colorado
+co_counties <- counties(state = "CO")
+```
+
+The `tigris` package is one of many data retrieval R packages that uses API calls to pull in data from various online/open databases directly into your R session, without the need to separately download. When you close out your R session, these 'temp' files are erased, so it does not use up any of your local storage.
+
+At the end of this lesson you will learn how to save shapefiles to your computer if you do in fact want to store and use them in the future (e.g., you manipulated a data set quite a bit and don't want to re-run the entire process every new R session).
+
+###### **Lines**
+
+`tigris` has many other data sets in addition to political boundaries. Today let's work with another shapefile, importing roads for Larimer county, which returns a polyline dataset for all roads in Larimer County.
+
+```{r}
+larimer_roads <- roads(state = "CO", county = "Larimer")
+```
+
+###### [`tmap`](https://r-tmap.github.io/tmap/)
+
+Throughout this lesson we will be using the `tmap` package to produce quick static or interactive maps.
+
+`tmap` allows for both static ("plot" mode) and interactive ("view" mode) mapping options, which you can set using the function `tmap_mode()` . For today we will be making quick interactive plots. Once you set the mode with `tmap_mode()`, every plot call to `tmap` after that produces a plot in that mode.
+
+```{r}
+tmap_mode("view")
+```
+
+Lets view our Colorado counties and Larimer County roads shapefiles. To make a "quick thematic map" in `tmap` you can use the `qtm()` function. You can also use `tm_shape()` plus the type of spatial layer (e.g., `tm_polygons()`) to add your layers to the map. Both methods below will produce the same exact map, and you may think why would you ever need to use the `tm_shape()` method since its more code? The answer may be rarely, but there are some cases where you can customize your maps better with `tm_shape()` that we will see later on.
+
+Also notice that `tmap` uses `+` signs to tack on additional maps/elements similar to `ggplot2` code (i.e., no pipe!)
+
+*Note: map rendering may take a few seconds because the roads layer is pretty large and detailed.*
+
+```{r}
+# Option 1: Using qtm()
+qtm(co_counties)+
+  qtm(larimer_roads)
+```
+
+```{r}
+# Option 2: Using tm_shape()
+tm_shape(co_counties)+
+  tm_polygons()+
+tm_shape(larimer_roads)+
+  tm_lines()
+```
+
+Mess around with this map a little bit. See that you can change the basemap, turn layers on and off, and click on features to see their attributes.
+
+There are a ton of ways to customize these maps (more details on this in the spatial viz lesson!). For example, `co_counties` has an 'AWATER' variable, which represents the total area of water bodies in each county. To color by that variable we would use:
+
+```{r}
+qtm(co_counties, fill = "AWATER")
+```
+
+Let's inspect the spatial data sets a little more. You'll see that the code below tells us our data is an "sf" data frame:
+
+```{r}
+class(co_counties)
+```
+
+###### [`sf`](https://r-spatial.github.io/sf/)
+
+By default, the `tigris` package imports spatial data in `sf` format, which stands for 'simple features'. The `sf` package provides an easy and efficient way to work with vector data, and represents spatial features as a `data.frame` or `tibble` with a **geometry** column, and therefore also works well with `tidyverse` packages to perform manipulations like you would a data frame.
+
+For example, we are going to do an exercise for the Poudre Canyon Highway, so we want to filter out the roads data set to only those features. By zooming in on our interactive map, we can find the poudre canyon highway, click on it, and see what the exact 'FULLNAME' attribute is that we can use to `filter()` the data set. Call the new roads feature `poudre_hwy`.
+
+```{r}
+poudre_hwy <- larimer_roads %>% 
+  filter(FULLNAME == "Poudre Canyon Hwy")
+
+# plot the new spatial feature
+qtm(poudre_hwy)
+```
+
+###### Points
+
+Most often when you are working with points, you start with an excel file or something similar that consists of the raw latitude and longitude. When you have spatial data that is not explicitly spatial yet or not in the `sf` format, you use the `st_as_sf()` function to transform it.
+
+Lets work with a couple locations along the Poudre highway, making a small data frame of their coordinates:
+
+```{r}
+poudre_points <- data.frame(name = c("Mishawaka", "Rustic", "Blue Lake Trailhead"),
+                            long = c(-105.35634, -105.58159, -105.85563),
+                            lat = c(40.68752, 40.69687, 40.57960))
+```
+
+Right now, `poudre_points` is just a data frame (run `class(poudre_points)` to check). We need to convert it to a spatial (`sf`) object first in order to map and spatially analyze it.
+
+Within the `st_as_sf()` function we need to specifying the longitude and latitude columns in our `poudre_points` data frame and the CRS (Coordinate Reference System). **VERY IMPORTANT: 'x' (longitude) always goes first followed by 'y' (latitude).** Otherwise it will map your points on the other side of the world.
+
+```{r}
+poudre_points_sf <- st_as_sf(poudre_points, coords = c("long", "lat"), crs = 4326)
+
+# map our points
+qtm(poudre_hwy)+
+  qtm(poudre_points_sf)
+```
+
+Note the 4-digit number we assign for `crs`. This is an EPSG code, which is tied to a specific CRS called WGS84 and one of the most common reference systems coordinates are recorded in (often noted by the fact that the values are in decimal degrees). This is used by Google Earth, the U.S. Department of Defense and all GPS satellites (among others). A full list of EPSG codes and coordinate reference systems can be found [here](https://spatialreference.org/ref/epsg/). Note, there are A LOT. Probably the most common used in the U.S. are WGS84 (a global CRS) and NAD83 (used by many U.S. federal agencies).
+
+###### Coordinate Reference Systems
+
+Probably the most important part of working with spatial data is the coordinate reference system (CRS) that is used. The CRS describes how and where your spatial data is located on Earth. There are numerous different CRS's depending on when and how the data was collected, the spatial location and extent it was collected, etc. In order to analyze and visualize spatial data, **all objects must be in the exact same CRS**.
+
+We can check a spatial object's CRS by printing it the object name to the console, which will return a bunch of metadata about the object. You can specifically return the CRS for `sf` objects with `st_crs()`.
+
+```{r}
+# see the CRS in the header metadata:
+co_counties
+
+#return just the CRS (more detailed)
+st_crs(co_counties)
+```
+
+You can check if two objects have the same CRS like this:
+
+```{r}
+st_crs(poudre_hwy) == st_crs(poudre_points_sf)
+```
+
+Uh oh, the CRS of our points and lines doesn't match. While `tmap` performs some on-the-fly transformations to map the two layers together, in order to do any analyses with these objects you'll need to re-project one of them. You can project one object's CRS to that of another with `st_transform` like this:
+
+```{r}
+# transform the CRS of poudre_points_sf to the CRS of poudre_hwy
+poudre_points_prj <- st_transform(poudre_points_sf, st_crs(poudre_hwy))
+
+# Now check that they match
+st_crs(poudre_points_prj) == st_crs(poudre_hwy)
+```
+
+##### 2.2 Raster Data {.tabset}
+
+###### [`elevatr`](https://github.com/jhollist/elevatr/)
+
+Lets import some elevation data using the `elevatr` package. The function `get_elev_raster()` returns a raster digital elevation model (DEM) from the AWS Open Data Terrain Tiles. For this function you must supply a spatial object specifying the **extent** of the returned elevation raster and the resolution (specified by the zoom level `z`). *Note: 'extent' is the spatial bounding box of the data (represented by the x,y coordinates of the four corners inclusive of the entire spatial data).*
+
+We are importing elevation at \~ 1km resolution (more like 900 m), and we can use our `co_counties` object as the extent we want to download to, which will return elevation tiles for the state of Colorado.
+
+```{r}
+co_elevation <- get_elev_raster(co_counties, z = 7) # z specifies zoom level. Higher values represent finer scale/resolution.
+```
+
+```{r}
+# map it out, note qtm() does not work with rasters since package v. 4.0
+tm_shape(co_elevation) +
+  tm_raster()
+```
+
+By default, `tmap` uses a categorical symbology to color the cells by elevation. You can change that to a continuous palette like this, and change our legend title:
+
+```{r}
+tm_shape(co_elevation)+
+  tm_raster(col.scale = tm_scale_continuous(), 
+            col.legend = tm_legend("Elevation (m)"))
+```
+
+When we see this on a map, we see that it actually extends beyond Colorado due to how the Terrain Tiles are spatially organized.
+
+Let's inspect this raster layer a little. By printing the object name to the console we see a bunch of metadata like resolution (cell/pixel size), extent, CRS, and file name.
+
+```{r}
+co_elevation
+```
+
+###### `terra`
+
+We use the `terra` package to work with raster data. For example, we only want to see elevation along the Poudre highway. We can use `crop` to crop the raster to the extent of our `poudre_hwy` spatial object using the `ext()` function to get the extent (i.e., bounding box) of our `poudre_hwy` object.
+
+However...if we look at the class of our raster object**:**
+
+```{r}
+# note the data type of elevation is RasterLayer
+class(co_elevation)
+```
+
+The `elevatr` R package uses an outdated R package called `raster` that uses "RasterLayer" data types. This package has been discontinued, and you should always use `terra` for raster data in R from now on. In order to use `terra` functions, we need to convert this raster to terra's format, which is called `SpatRaster`.
+
+Luckily, this conversion is very easy with the `rast()` function:
+
+```{r}
+co_elevation_terra <- rast(co_elevation)
+```
+
+Now check the class:
+
+```{r}
+class(co_elevation_terra)
+```
+
+Now we can use `terra` functions, like `crop()` to crop our raster to the extent of our poudre highway polygon.
+
+```{r}
+co_elevation_crop <- crop(co_elevation_terra, poudre_hwy)
+
+#map it
+tm_shape(co_elevation_crop) +
+  tm_raster(col.scale = tm_scale_continuous()) # make it continuous color scale
+```
+
+Now, let's plot all of our spatial layers together. Note that with tmap, for each new layer, you first specify `tm_shape({name of spatial data})` and then right after `tm_{type of spatial data})`. This example shows us how to plot rasters, lines and points:
+
+```{r}
+tm_shape(co_elevation_crop) +
+  tm_raster(col.scale = tm_scale_continuous())+
+  tm_shape(poudre_hwy) +
+  tm_lines()+
+  tm_shape(poudre_points_prj) + 
+  tm_dots(size = 1) 
+```
+
+#### 3. Reading and Writing Spatial Data {.tabset}
+
+##### 3.1 Writing spatial data
+
+All of the spatial data we've worked with are only saved as objects in our environment. To save the data to disk, the `sf` and `terra` packages have functions to do so. You are not required to save these files, but if you want to follow along with these functions save the data to the 'data/' folder.
+
+To save vector data with `sf`, use `write_sf()`
+
+```{r}
+write_sf(poudre_hwy, "data/poudre_hwy.shp")
+
+write_sf(poudre_points_prj, "data/poudre_points.shp")
+```
+
+While you can give the file any name you want, note that you **must put '.shp' as the extension of the file**. While '.shp' stands for 'shapefile', if you run the code above you'll notice a bunch of other files are saved, having the same file name but different extensions. These are auxiliary files required to properly work with the .shp shapefile. **If you ever want to share or move a shapefile,** **you must zip all the auxiliary files and .shp file together**. Think of them as a package deal!
+
+To save raster data with `terra` use `writeRaster()`
+
+```{r}
+writeRaster(co_elevation_crop, "data/poudre_elevation.tif", overwrite=TRUE)
+```
+
+Same as with the vector data, when saving raster data you **must add the '.tif' file extension** to the name. There are various formats raster data can be stored as (e.g., ASCII, ESRI Grid) but GeoTiffs are the most common and generally easiest to deal with in R.
+
+##### 3.2 .RData Files
+
+Another way you can store data is saving your environmental variables as R Data objects. You may have already seen '.RData' files in your folders before if you ever click 'yes' when closing out of RStudio asks you to save your workspace. What this does is save everything in your environment to a file with a '.RData' extension in your project directory, and then every time you open your project it reloads everything that was in the environment. This however is often poor practice, as it prevents you from writing reproducible code and all those variables start racking up storage space on your computer. We recommend changing this setting by going to Global Options and under 'Workspace' set 'Save workspace to .RData on exit' to '**Never**'.
+
+However, there are times you may want to save your variables as R files, such as when you have a set of variables you want to quickly re-load at the beginning of your session, or some files that are pretty large in size which is often the case with spatial data (R object files are much smaller). **You can save single *or* multiple variables to an .RData file, or single variables to an .RDS file**.
+
+Since the `poudre_hwy` and `poudre_points_prj` were objects you created in this session, to avoid the need to recreate them you can save them to an .RData file with `save()` :
+
+```{r}
+save(poudre_hwy, poudre_points_prj, file = "data/poudre_spatial_objects.RData")
+```
+
+Note that you must add the 'file =' to your second argument.
+
+Now to test out how .RData files work, remove them from your environment with `rm()` (*be careful with this function though, it is permanent!*) and load them back in with `load()`
+
+```{r}
+rm(poudre_hwy, poudre_points_prj)
+```
+
+See they are no longer in your Environment pane, but after you load the .RData file back in, it loads in those two objects with the same environmental names they were given when you saved them.
+
+```{r}
+load("data/poudre_spatial_objects.RData")
+```
+
+*Note that `terra` objects don't properly save to .RData files. There is a work around with `wrap()` and `saveRDS()`, but we won't be covering that here. Best to just save it with `writeRaster()`.*
+
+##### 3.3 Reading Spatial Data
+
+To read in shapefiles, you use `read_sf()` . If you saved the `poudre_hwy` shapefile in the steps above, you can load it back into your environment like this:
+
+```{r}
+reloaded_poudre_hwy <- read_sf("data/poudre_hwy.shp")
+```
+
+Notice that when reading shapefiles into R you only specify the file with the '.shp' extension, and don't need to pay much attention to any of those auxiliary files. As long as all the other auxiliary files are saved in that same folder, it will read in the shapefile correctly, but if you are missing any then the .shp file becomes useless on its own.
+
+To read in raster (.tif) files you use the `rast()` function and file path with the appropriate file extension
+
+```{r}
+reloaded_raster <- rast("data/poudre_elevation.tif")
+```
+
+**Remember when reading in files you will want to assign them to a new variable name with `<-` to keep them in your environment**.
+
+#### 4. Exercises {.tabset}
+
+##### 1.  
+**Explore the use of `extract` from the `terra` package by running `?terra::extract`. (Note we need to specify `terra::` because 'extract' is a function name in multiple packages we may have loaded in our session).**
+
+    **Then, use `extract()` to get the elevation (using the `co_elevation_crop` object created in the lesson) at each of the three points in `poudre_points_prj` ? (2 pts)**
+
+    ```{r}
+    ?terra::extract
+
+    elevation <- extract(co_elevation_crop, poudre_points_prj)
+
+    #elevations are as follows (in meters):
+    #Mishawaka = 1853; Rustic = 2212; Blue Lake Trailhead = 2916
+
+    ```
+
+##### 2.  
+**Choose your favorite state (other than Colorado). For that state, carry out the following tasks: (8 pts)**
+
+Import the county boundaries for your state:
+
+```{r}
+ca_counties <- counties(state = "CA")
+```
+
+Import elevation for your state (using your new counties object as the extent/bounding box and set `z = 7`):
+
+```{r}
+ca_elevation <- get_elev_raster(ca_counties, z = 7)
+```
+
+Create an interactive map of your state counties and the elevation layer underneath (*note:* compare the use of `tm_polygons()` vs. `tm_borders()` for mapping polygons. Which works better in this case for showing multiple spatial layers?).
+
+```{r}
+?tm_polygons
+```
+
+```{r}
+ca_elevation_terra <- rast(ca_elevation)
+
+tm_shape(ca_elevation_terra)+
+  tm_raster(col.scale = tm_scale_continuous(), 
+            col.legend = tm_legend("Elevation (m)")) +
+  tm_shape(ca_counties)+
+  tm_borders()
+```
+
+Choose a single county within your state county object, and crop your elevation layer to the extent of that county (*note:* first use `filter()` to create an object of just your selected county that you want to crop to). Follow the steps above we used to crop co_elevation to the poudre hwy.
+
+```{r}
+ca_county_fil <- ca_counties %>%
+  filter(NAME == "San Bernardino")
+
+ca_elevation_crop <- crop(ca_elevation_terra, ca_county_fil)
+
+tm_shape(ca_elevation_crop) +
+  tm_raster(col.scale = tm_scale_continuous())+
+  tm_shape(ca_county_fil) +
+  tm_borders()
+```
+
+### Spatial Analysis {.tabset}
+
+In the first lesson this week you were introduced to different spatial data types, various databases you can pull spatial data from and worked through importing, wrangling, and saving those spatial data types. Today we are going to dive deeper into spatial analyses in R.
+
+You have briefly used the `sf` and `terra` packages so far, but today we will be exploring them much more in depth using the wide range of spatial analysis operations they provide.
+
+You shouldn't need to install any new packages for today, but need to load in all the necessary libraries:
+
+```{r}
+source("setup.R")
+```
+
+#### Load in spatial data {.tabset}
+
+We will be working with some new datasets today that are already included in the 'data/' folder. These include:
+
+-   "spatDat.RData" : an .RData file that loads in the four objects:
+
+    -   `counties` : a multipolygon layer of Colorado counties (which we used in 01_spatial_intro.Rmd)
+
+    -   `rivers` : a polyline layer of all major rivers in Larimer County, Colorado
+
+    -   `occ` : a list of three dataframes that includes species occurrence data (i.e., point locations) for Elk, Yellow-bellied Marmot, and Western Tiger Salamander in Colorado retrieved from the [GBIF](https://www.gbif.org/) database.
+
+    -   `snotel_data` : spatial point dataframe (i.e., `sf` object) of daily snow depth for 8 SNOTEL sites in Colorado from 2020-2022.
+
+```{r key1}
+#load in all your vector data
+load("data/spatDat.RData")
+
+#read in the elevation and landcover rasters
+landcover <- terra::rast("data/NLCD_CO.tif")
+
+elevation <- terra::rast("data/elevation.tif")
+```
+
+##### Bonus Lesson
+
+All the above objects were retrieved and cleaned in R. The lesson plan in the 'bonus/' folder titled **'get_spatial_challenge.Rmd'** is an assignment that tasks you with importing and cleaning the data that was saved in 'data/spatDat.RData'. If you complete this challenge assignment fully you will get *up to 3 extra credit points*. Even if you don't want to complete this challenge, it is worth your while to read and work through it!
+
+##### `mapview`
+
+In the first lesson we used `tmap` to visualize our spatial data. Here we are going to introduce you to a second commonly used mapping package in R, `mapview`.
+
+#### Distance Calculations {.tabset}
+
+We're going to start off today with some distance calculations. Using our species occurrence data, say we want to know, on average, how far away is each species found from a major river, and compare that among species.
+
+First, our `occ` object is not in a spatial format. We first need to bind our dataframes into a single one, and convert it to an `sf` object using `st_as_sf()` :
+
+```{r}
+occ_sp <- bind_rows(occ) %>% 
+  st_as_sf(coords = c("decimalLongitude", "decimalLatitude"), crs = 4326)
+```
+
+We set the CRS to `4326`, which is the EPSG code for WGS84, the most commonly used CRS for GPS coordinates (But I also checked the GBIF metadata to make sure it was in fact WGS84).
+
+Quick view of all our points, colored by species, using the `mapview` package:
+
+```{r}
+mapview(occ_sp, zcol = "Species")
+```
+
+Now, calculating the distance to the nearest river involves point to line distance calculations, which we can perform with the `sf` package.
+
+Before performing any spatial operations, remember all of our spatial objects must be in the same CRS.
+
+##### Exercise #1
+
+```{r}
+st_crs(rivers) == st_crs(occ_sp)
+```
+
+The CRS of our objects do not match. Using what you learned in week one, conduct a spatial transformation to our `occ_sp` object to coerce it to the same CRS of our `rivers` object. Call the new object `occ_prj` and double check that `rivers` and our new occurrences object are in the same CRS after transforming. **(1 pt)**
+
+```{r}
+occ_prj <- st_transform(occ_sp, st_crs(rivers))
+st_crs(rivers) == st_crs(occ_prj)
+```
+
+Now lets visualize our rivers and occurrence data:
+
+```{r}
+mapview(rivers) + mapview(occ_prj, zcol = "Species")
+```
+
+Our occurrence data set covers all of Colorado, but rivers are only for Larimer County. So, lets first filter our points to Larimer County.
+
+Similar to `filter()` from the {tidyverse}, we can use `st_filter()` to perform a *spatial* filtering (i.e., we want to filer just the points that occur in Larimer County).
+
+##### Exercise #2
+
+Use `?st_filter` to explore the use of the function, and then use it to filter our `occ_prj` points to Larimer county and call the new object `occ_larimer`.
+
+*Note:* You will first need to `filter()` `counties` to just Larimer county, then use that object as the spatial filter. **(2 pts)**
+
+```{r}
+larimer_county <- counties %>%
+  filter(NAME == "Larimer")
+
+occ_larimer <- st_filter(occ_prj, larimer_county)
+```
+
+```{r}
+mapview(occ_larimer)
+```
+
+Great, now we just have species occurrences within Larimer County.
+
+Now for each point we want to calculate its distance to the nearest river. The most efficient way is to first find the nearest line feature for each point. We can do this with the `st_nearest_feature()` function.
+
+*Remember all that indexing we learned in the first week of class, this workflow is a good example of when that comes in handy!*
+
+This function returns the index values (row number) of the river feature in the `rivers` spatial data frame that is closest in distance to each point. Here we are assigning these index values to a new column of our Larimer occurrences called 'nearest_river' that we will use later to calculate distances:
+
+```{r}
+occ_larimer$nearest_river <- st_nearest_feature(occ_larimer, rivers)
+```
+
+Now, for each point we can use the `st_distance()` function to calculate the distance to the nearest river feature, using the index value in our new "nearest_river" column. Adding `by_element = TRUE` is necessary to tell the function to perform the distance calculations by element (row), which we will fill into a new column "river_dist_m".
+
+```{r}
+occ_larimer$river_dist_m <-
+  st_distance(occ_larimer, rivers[occ_larimer$nearest_river, ], by_element = TRUE)
+```
+
+Notice that the new column "river_dist_m" is more than just a numeric class, but a "units" class, specifying that the values are in meters.
+
+```{r}
+str(occ_larimer)
+```
+
+##### Exercise #3
+
+Cool, now you have the distance to the nearest river (in meters) for each individual species occurrence, but now you want the average distance for each species. Using what you know of the `dplyr` functions, 1) calculate the species average distance, then 2) make a bar plot to compare the averages among species **(2 pts)**
+
+*Hint*: remember that the new distance column is a 'units' data type will throw an error when you try to plot those values. You will need to make use of `mutate()` and `as.numeric()` within your string of operations in order to complete task.
+
+```{r}
+
+occ_larimer_num <- occ_larimer %>%
+  mutate(river_dist = as.numeric(river_dist_m))
+
+occ_dist_summary <- occ_larimer_num %>%
+  group_by(Species) %>%
+  summarise(mean = mean(river_dist))
+
+occ_dist_summary %>%
+  ggplot() +
+  geom_col(aes(x = Species, y = mean))
+  
+```
+
+Which species is, on average, found closest to a river?
+
+#### Buffers {.tabset}
+
+Alternatively, say you want to know what percentage of species' occurrences (points) were found within a specified distance of a river (calculated buffer). Here lets investigate how often each species is found within 100m of a river.
+
+To do this we can add a buffer around our line features and filter the points that fall within that buffer zone. We can use `st_buffer()` with a specified distance (default is meters since our `rivers` object uses 'meters' as its length unit, we can tell by checking the CRS with `st_crs()`)
+
+```{r}
+river_buffer <- st_buffer(rivers, dist = 100)
+
+mapview(river_buffer)
+```
+
+If you zoom in on the map you can now see a buffer around the rivers, and this new object is actually a polygon geometry type now instead of a line.
+
+```{r}
+river_buffer
+```
+
+#### Spatial Intersect {.tabset}
+
+We can conduct spatial intersect operations using the function `st_intersects()`. This function checks if each occurrence intersects with the river buffer, and if so it returns an index value (row number) for the river feature it intersects. This function returns a list object for each occurrence, that will be empty if there are no intersections. We will add this as a column to our occurrence data set, and then create a binary yes/no river intersection column based on those results (is the list empty or not?).
+
+First look at what `st_intersects()` returns:
+
+```{r}
+st_intersects(occ_larimer, river_buffer)
+```
+
+We see it is a list of the same length (1811) as our `occ_larimer` object, where each list element is either empty (no intersections) or the index number for the river buffer feature it intersects with. To add this as a new column in our `occ_larimer` data we run this:
+
+```{r}
+occ_larimer$river_intersections <- st_intersects(occ_larimer, river_buffer) 
+```
+
+Now we can create a new column in `occ_larimer` called 'river_100m' that returns TRUE/FALSE if the buffer intersects with a river. We make use of `if_else()` and the `lengths()` function to check the length of each list element in each row, as the empty ones will return a length of 0. If the length is zero/empty, then we return FALSE meaning that occurrence was not found within 100m of a river.
+
+```{r}
+occ_rivers <- occ_larimer %>% 
+  mutate(river_100m = if_else(lengths(river_intersections) == 0, FALSE, TRUE))
+```
+
+Now we can calculate what percentage of occurrences are within 100 m of a river for each species using `dplyr` operations. Which species is most often found within 100m of a river?
+
+```{r}
+occ_rivers %>% 
+  group_by(Species) %>% 
+  summarise(total_occ = n(), 
+            total_rvier = sum(river_100m == TRUE),
+            percent_river = (sum(river_100m == TRUE)/total_occ)*100) 
+```
+
+<hr>
+
+##### Reflection
+
+This analysis is just for teaching purposes, why would you be cautious about these results for answering real research questions? Think about how we filtered everything to a political boundary, what's wrong with this method?
+
+#### Raster Reclassification {.tabset}
+
+So far we've dealt with a bunch of vector data and associated analyses with the `sf` package. Now lets work through some raster data analysis using the `terra` package.
+
+First, lets explore the landcover raster by making a quick plot.
+
+```{r}
+mapview(landcover)
+```
+
+This land cover data set includes attributes (land cover classes) associated with raster values. The is because of the .aux auxiliary file paired with the .tif. in the 'data/' folder. Similar to shapefiles, this file provides metadata (in this case land cover class names) to the raster file.
+
+We can quickly view the frequency of each land cover type with the `freq()` function, where 'count' is the number of pixels in the raster of that landcover type.
+
+```{r}
+land_cover_numbies <- freq(landcover)
+```
+
+##### Exercise #4
+
+Create a bar chart of landcover frequency, and order the bars highest to lowest (see [this resource](https://sebastiansauer.github.io/ordering-bars/) to guide you on sorting bars by a numeric variable/column). Also investigate the use of `coor_flip()` and how it might make your plot look better. **(1 pt).**
+
+```{r}
+land_cover_numbies %>%
+  ggplot() +
+  geom_col(aes(x = reorder(value, -count),y = count))
+```
+
+Say we want to explore some habitat characteristics of our species of interest, and we are specifically interested in forest cover. We can use raster reclassification to create a new layer of just forest types in Colorado.
+
+Since rasters are technically matrices, we can using **indexing** and change values quickly using matrix operations. Given this particular raster uses character names associated with values (thanks to the .aux file!), we can index by those names.
+
+```{r}
+#first assign landcover to a new object name so we can manipulate it while keeping the original
+forest <- landcover
+
+#where the raster equals any of the forest categories, set that value to 1
+forest[forest %in% c("Deciduous Forest", "Evergreen Forest", "Mixed Forest")] <- 1
+
+#SPELLING IS IMPORTANT
+
+#now set all non forest pixels to NA
+forest[forest != 1] <- NA
+
+forest <- as.numeric(forest) # this drops the classification metadata for plotting
+```
+
+Now plot the new forest layer to get a quick sense if it looks accurate or not.
+
+```{r}
+mapview(forest)
+```
+
+#### Extraction Statistics {.tabset}
+
+When we want to summarize raster values for certain shapes (points, polygons, etc), the `extract()` function from the `terra` package helps us do that.
+
+Say we want to find out the most common land cover type each of our species is found in. We can use `extract()` to get the landcover value from the raster at each of our occurrence points, and then do some summary statistics.
+
+Within this function, the first element is the raster you want to get values from, and the second element is the spatial layer you want to extract values at. Here we will use our `landcover` raster layer and the `occ_prj` object to extract values for occurrences across Colorado.
+
+First, we need to project our landcover raster to the CRS of our occurrences, otherwise the operation will only return NAs.
+
+```{r}
+# project the landcover layer
+landcover_prj <- project(landcover, crs(occ_prj))
+
+extract(landcover_prj, occ_prj)
+```
+
+Notice that this returns a 2 column data frame, with an ID for each feature (occurrence) and the extracted raster value in the second column. We can actually use `extract()` within `mutate()` to add the values as a new column to our occurrences data frame so we can do further summary statistics.
+
+However, since `extract()` returns a 2 column data frame, it will nest this into a single column in the `occ_prj` data frame. To separate this into two separate columns we can use `unnest()` :
+
+```{r}
+occ_landcover <- occ_prj %>%
+  mutate(common_landcover = extract(landcover_prj, occ_prj)) %>%
+  unnest(common_landcover) %>% 
+  #lets rename the land cover column which is now called "NLCD Land Cover Class"
+  rename(common_landcover = "NLCD Land Cover Class")
+```
+
+Now, we can find the most common land cover type for each species, using some tidyverse wrangling. Note the use of `st_drop_geometry()`, this reverts the sf object back to an original data frame, which is required for some tidyverse operations.
+
+```{r}
+occ_landcover %>% 
+  st_drop_geometry() %>% # this converts the data back to a dataframe, required for some tidyverse operations
+  group_by(Species) %>% 
+  count(common_landcover) %>% 
+  slice(which.max(n)) #returns the row with the highest count "n"
+```
+
+We can also use `extract()` to extract raster values within polygons, but here must supply some function of how to summarize all the values within each polygon. For this example, lets fine the most common landcover type in each Colorado county.
+
+```{r}
+county_landcover <- 
+  counties %>%
+  mutate(landcover = extract(landcover_prj, counties, fun = "modal")) %>%
+  unnest(landcover) %>%
+  rename(value = "NLCD Land Cover Class") #renaming this helps us perform a join later on...
+```
+
+Uh oh, this gives us the raw pixel values instead of the land cover classes. We can get a table of value - class pairs by using the `cats()` function:
+
+```{r}
+classes <- as.data.frame(cats(landcover)) #coerce to a data frame because cats() actually returns it as a list
+```
+
+Value and NLCD.Land.Cover.Class are our cell value - class pairs. Now we want to join this to our `county_landcover` object to get the actual land cover name.
+
+##### Exercise #5
+
+Perform the appropriate `*_join` operation to tie our `county_landcover` and `classes` data frames together. Then make a map of the counties each colored/filled by the most common NLCD land cover class. **(2 pts).**
+
+```{r}
+
+joined_data <- inner_join(classes, county_landcover, by = "value")
+
+joined_sf <- st_as_sf(joined_data)
+
+mapview(joined_sf, zcol = "NLCD.Land.Cover.Class")
+
+```
+
+
+```{r}
+?mapview
+
+```
+
+##### Exercise #6
+
+Find the average elevation each species occurs at (for all Colorado occurrences). Which species is, on average, found at the highest elevations?
+
+*Hints*: Use the `elevation` and `occ_prj` objects we have created or read in above. Remember to check the CRS and perform a spatial transformation if necessary! All parts needed to answer this question have been introduced in this lesson plan. **(2 pts).**
+
+```{r}
+
+elevation_terra <- rast(elevation)
+
+class(elevation)
+
+elevation_prj <- project(elevation, crs(occ_prj))
+
+extract(elevation_prj, occ_prj)
+
+occ_ele <- occ_prj %>%
+  mutate(found_ele = extract(elevation_prj, occ_prj)) %>%
+  unnest(found_ele) %>% 
+  #lets rename the land cover column which is now called "NLCD Land Cover Class"
+  rename(found_ele = "Elevation")
+
+sum <- function(x){
+  occ_ele %>%
+    st_drop_geometry() %>%
+  filter(Species == x) %>%
+    summarise(mean = mean(found_ele))
+}
+
+sumE <- sum("Elk")
+sumS <- sum("Western Tiger Salamander")
+sumM <- sum("Yellow-bellied Marmot")
+
+
+#slice(which.max(n))
+
+
+```
+
+```{r}
+sumM2 <- occ_ele %>%
+  st_drop_geometry() %>%
+  filter(Species == "Yellow-bellied Marmot") %>%
+  drop_na(found_ele) %>%
+  summarise(mean = mean(found_ele))
+```
+
+```{r}
+maxd <- occ_ele %>%
+  st_drop_geometry() %>%
+  group_by(Species) %>%
+  drop_na(found_ele) %>%
+  summarise(max = max(found_ele))
+```
+
+### Map Challenge
+
+```{r}
+source("setup.R")
+
+load("data/spatdat.RDATA")
+
+usa_trees <- terra::rast("data/nlcd_tcc_CONUS_2023_v2023-5_wgs84/nlcd_tcc_conus_wgs84_v2023-5_20230101_20231231.tif")
+
+elevation <- terra::rast("data/elevation.tif")
+```
+
+```{r}
+
+ca_counties_clean <- st_transform(ca_counties, st_crs(usa_trees))
+
+ca_counties_clean2 <- ca_counties_clean %>%
+  filter(NAME %in% c("Kern", "Tulare", "San Bernardino", "Inyo", "Fresno", "Mono", "Madera", "Mariposa", "Tuolumne", "Calaveras", "Amador", "El Dorado", "Placer", "Sierra", "Plumas", "Lassen", "Modoc", "Nevada", "Alpine"))
+
+ca_trees_mask <- terra::crop(usa_trees, ca_counties_clean2, mask = TRUE)
+
+ca_trees_mask_test <- aggregate(ca_trees_mask, fact = 10)
+
+```
+
+```{r}
+mapview(ca_trees_mask_test)
+```
+
+```{r}
+mapview(ca_counties_clean)
+```
+
+```{r}
+tm_shape(ca_trees_mask_test) +
+  tm_raster()
+```
+
+```{r}
+
+master_tree_data <- 
+  ca_counties_clean2 %>%
+  mutate(per_trees = terra::extract(ca_trees_mask_test, ca_counties_clean2, fun = "mean", na.rm = TRUE)) %>%
+  unnest(per_trees) %>%
+  rename(per_trees = "category")
+
+```
+
+```{r}
+ca_elevation_clean <- project(ca_elevation_terra, crs(usa_trees))
+
+ca_elevation_mask <- terra::crop(ca_elevation_clean, ca_counties_clean2, mask = TRUE)
+
+tm_shape(ca_elevation_mask) +
+  tm_raster()
+```
+
+```{r}
+st_crs(ca_elevation_clean) == st_crs(usa_trees)
+```
+
+```{r}
+tmap_mode("plot")
+
+tm_shape(ca_elevation_mask) +
+  tm_raster(
+    col.legend = tm_legend(title = "Elevation (m)")
+  ) +
+  tm_shape(master_tree_data) +
+  tm_bubbles(size = "per_trees",
+             fill = "red",
+             fill_alpha = 0.5,
+             size.legend = tm_legend(title = "Percent (%) Tree Cover")) +
+  tm_shape(master_tree_data) +
+  tm_borders() +
+  tm_scalebar(position = c("left", "bottom")) +
+  tm_compass(position = c("right", "top")) +
+  tm_credits("Micheal Gartland", position = c("right", "bottom")) +
+  tm_credits("Data: US Forest Service", position = c("right", "center")) +
+  tm_title("Relation Between County Elevation and Percent Tree Cover")
+
+```
+
+## Assignment 11: Nested Modeling {.tabset}
+
+### Tidying WQ Data {.tabset}
+
+#### Why public data sets?
+
+Working with large, open-access data sets can serve many purposes. It
+can be an excellent way to explore new ideas, before investing in
+field-work or experiments. It can be a great way to take local or
+experimental results and expand them to different ecosystems, places, or
+landscapes. Or, it can be an excellent way to build, validate, and test
+ecological models on regional or national scales.
+
+So why doesn't everyone use public data? Well, it's often collected by a
+variety of organizations, with different methods, units, and
+inconsistent metadata. Together these issues make large public data sets
+quite messy. This messiness can take many different forms, but at the
+basic level it means that data is hard to analyze. This is not
+necessarily because the data itself is bad, but because the way it is
+organized is unclear and/or inconsistent.
+
+In this assignment, we will use the skills we've learned to convert a
+messy data set into something ready for analysis. As always, we will
+depend heavily on the {tidyverse}, an excellent series of packages that
+make data manipulation beautiful and easy. We will also be working with
+the US's [Water Quality Portal data
+base](https://www.waterqualitydata.us/), which we will access with the
+{dataRetrieval} package.
+
+#### Loading key packages
+
+Let's first load in all of our necessary packages, which you can do with
+the 'setup.R' script we've created for you. Some of these packages might
+be new to you, such as:
+
+-   {broom} : simplified model outputs
+
+-   {trend"} : Package to explore trends in data
+
+```{r setup, warnings = 'hide', message = FALSE}
+source('setup.R')
+knitr::opts_chunk$set(eval = FALSE)
+
+# Disable evaluation for inline code
+knitr::knit_hooks$set(evaluate.inline = function(code, envir) {
+  code  # Return the code itself instead of evaluating it
+})
+```
+
+#### Downloading data {.tabset}
+
+For this lesson, we'll explore water quality data in the Colorado River
+Basin as it moves from Colorado to Arizona. All data will be generated
+through the code you see below, with the only external information
+coming from knowing the site IDs for the monitoring locations along the
+Colorado River and the water quality characteristic names we are
+interested in.
+
+The water quality portal can be accessed with the function
+`readWQPdata()`, which takes a variety of arguments (like start date,
+end date, constituents, etc.). We'll generate these arguments for
+downloading the data below.
+
+##### Download prep
+
+First we'll make a tibble (aka, a tidyverse-style table/data frame) of
+our site IDs of interest. (Generally, as the site ID's number increases,
+the site's location moves further downstream of the river's headwaters,
+which are near Grand Lake, CO.)
+
+```{r}
+colorado <- tibble(siteid = c("USGS-09034500", "USGS-09069000",
+                              "USGS-09085000", "USGS-09095500", "USGS-09152500"),
+                   basin = c("colorado1", "eagle",
+                             "roaring", "colorado3", "gunnison"))
+```
+
+Now that we have a tibble that contains a list of our sites of interest,
+we next will need to set up a series of rules for downloading data from
+the Water Quality Portal.
+
+We'll focus on cation and anion data from 1980-present(ish). Each cation
+has a name that we might typically use (like calcium or sulfate), but
+the name may be different in the Water Quality Portal, so we have to
+check this website
+(<https://www.waterqualitydata.us/Codes/Characteristicname?mimeType=xml>)
+to get our names correct.
+
+```{r}
+# ca = "Calcium"
+# mg = "Magnesium"
+# na = "Sodium"
+# k = "Potassium"
+# so4 = c("Sulfate", "Sulfate as SO4", "Sulfur Sulfate", "Total Sulfate")
+# cl = "Chloride"
+# hco3 = c("Alkalinity, bicarbonate", "Bicarbonate")
+
+# Compile all these names into a single vector:
+parameters <- c("Calcium", "Magnesium", "Sodium", "Potassium", 
+                "Sulfate", "Sulfate as SO4", "Sulfur Sulfate",
+                "Total Sulfate", "Chloride", "Alkalinity, bicarbonate", 
+                "Bicarbonate")
+```
+
+Using our site names and characteristic names generated above, we can
+now run the `readWQPdata()` function to import water quality data for
+each of our sites and parameters:
+
+```{r}
+conc_wide <- readWQPdata(
+  siteid = colorado$siteid, # siteids column from the colorado object, becomes a vector
+  startDateLo = "1980-10-01", # must be formatted as YYYY-MM-DD
+  startDateHi = "2024-10-01", # must be formatted as YYYY-MM-DD
+  characteristicName = parameters, # our vector of `characteristcName`s
+  ActivityMediaName = "Surface Water" # WQP also has biological data and sediment data
+) 
+```
+
+**NOTE: the Water Quality Portal is in the middle of building a new API
+to house its water quality data. Therefore, these functions and data are
+in a state of flux. Sadly, this means there is no new discrete water
+quality data available past March 2024. 😥**
+
+#### Data tidying {.tabset}
+
+Now that we have downloaded the data, we need to tidy it up. The Water
+Quality Portal data comes with an incredible amount of metadata in the
+form of extra columns. But we don't need all this extra data.
+
+##### Look at the data you downloaded
+
+```{r}
+View(conc_wide)
+```
+
+##### Initial cleaning up
+
+Wow, that looks messy! Lots of extraneous columns, lots of NAs, so much
+information we can hardly parse it. Let's pare it down to the
+essentials.
+
+```{r}
+# This code mostly just grabs and renames the most important data columns
+conc_small <-  conc_wide %>%
+  select(date = ActivityStartDate,
+         parameter = CharacteristicName,
+         units = ResultMeasure.MeasureUnitCode,
+         siteid = MonitoringLocationIdentifier,
+         org = OrganizationFormalName,
+         org_id = OrganizationIdentifier,
+         time = ActivityStartTime.Time,
+         value = ResultMeasureValue,
+         sample_method = SampleCollectionMethod.MethodName,
+         analytical_method = ResultAnalyticalMethod.MethodName,
+         particle_size = ResultParticleSizeBasisText,
+         date_time = ActivityStartDateTime,
+         media = ActivityMediaName,
+         sample_depth = ActivityDepthHeightMeasure.MeasureValue,
+         sample_depth_unit = ActivityDepthHeightMeasure.MeasureUnitCode,
+         fraction = ResultSampleFractionText,
+         status = ResultStatusIdentifier) %>%
+  # Remove trailing white space in labels
+  mutate(units = trimws(units))  
+```
+
+Let's also add in the aliases we established in our`colorado` object,
+and then add a new column, `ion`, that represents what each of our
+`parameter`s are associated with. Next, let's make sure this information
+lives at the beginning of the table:
+
+```{r}
+conc_meta <- conc_small %>%
+  left_join(., colorado, by = "siteid") %>%
+  dplyr::mutate(ion = dplyr::case_when(
+    parameter == "Calcium" ~ "Ca",
+    parameter == "Magnesium" ~ "Mg",
+    parameter == "Sodium" ~ "Na",
+    parameter == "Potassium" ~ "K",
+    parameter %in% c("Sulfate", "Sulfate as SO4", "Sulfur Sulfate", "Total Sulfate") ~ "SO4",
+    parameter == "Chloride" ~ "Cl",
+    parameter %in% c("Alkalinity, bicarbonate", "Bicarbonate") ~ "HCO3")
+  ) %>%
+  select(siteid, basin, ion, parameter, date, everything())
+```
+
+Now let's look at this tidier version:
+
+```{r}
+View(conc_meta)
+```
+
+##### Final tidy data set
+
+That is getting better, but we still have lots of extraneous
+information. For our purposes let's assume that the sample and analytic
+methods used by the USGS are reasonable and exchangeable (i.e., one
+method is equivalent to the other). If we make that assumption then the
+only remaining data we need to clean is to make sure that all the data
+has the same units.
+
+##### Unit check
+
+```{r unit check}
+table(conc_meta$units)
+```
+
+Wow! Almost all the data is in mg/L (or, depending on when you pulled
+it, all of it). That makes our job really easy.
+
+We just need to remove these (potential) non-mg/L observations with a
+`dplyr::filter()` call and then select an even smaller subset of useful
+columns, while adding a date object column using the `lubridate::ymd()`
+call.
+
+```{r tidy}
+conc_tidy <- conc_meta %>% 
+  filter(units == 'mg/l') %>%
+  mutate(date = ymd(date)) %>%
+  select(date,
+         parameter,
+         ion,
+         siteid,
+         basin,
+         conc = value)
+```
+
+##### Daily data
+
+We now have a manageable data frame. But how do we want to organize the
+data? Since we are looking at a really long time-series of data, let's
+look at data as a daily average. The `dplyr::group_by()`
+`dplyr::summarize()` functions make this really easy:
+
+```{r}
+# The amazing group_by function groups all the data so that the summary
+# only applies to each subgroup (siteid, date, and parameter combination).
+# So in the end you get a daily average concentration for each siteid and parameter type. 
+conc_daily <- conc_tidy %>%
+  group_by(date, parameter, siteid, basin) %>% 
+  summarize(conc = mean(conc, na.rm = T))
+```
+
+Taking daily averages looks like it did eliminate
+`r nrow(conc_tidy) - nrow(conc_daily)` observations, meaning these
+site-date combinations had multiple observations on the same day.
+
+#### Assignment! {.tabset}
+
+Let's imagine you wanted to add more data to your water quality
+analyses, but you also know that you need to do this analysis over and
+over again. Let's walk through how we would: 1) Add new data to our
+current `conc_tidy` data set and 2) how to write a function to download,
+clean, and update our data with far less code.
+
+##### Question 1 
+
+Write a function that can repeat the above steps for any table of site
+IDs with a single function call. This function should take in a single
+tibble that is identical in structure to the `colorado` one above (i.e.,
+it has columns named `siteid` and `basin`), and produce an identical
+data frame to `conc_daily` (i.e., a data frame of daily average ion
+concentrations).
+
+```{r}
+Funk <- function(data, startDate = "1980-10-01", endDate = "2024-10-01"){
+
+  # Make sure packages are loaded 
+  
+packageLoad <- function(x) {
+    for (i in 1:length(x)) {
+      if (!x[i] %in% installed.packages()) {
+        install.packages(x[i])
+      }
+      library(x[i], character.only = TRUE)
+    }
+  }
+
+
+# vector of packages to load
+packages <- c('tidyverse',
+              'dataRetrieval')
+
+packageLoad(packages)  
+  
+parameters <- c("Calcium", "Magnesium", "Sodium", "Potassium", 
+                "Sulfate", "Sulfate as SO4", "Sulfur Sulfate",
+                "Total Sulfate", "Chloride", "Alkalinity, bicarbonate", 
+                "Bicarbonate")
+
+conc_wide_2 <- readWQPdata(
+  siteid = data$siteid, # siteids column from the colorado object, becomes a vector
+  startDateLo = startDate, # must be formatted as YYYY-MM-DD
+  startDateHi = endDate, # must be formatted as YYYY-MM-DD
+  characteristicName = parameters, # our vector of `characteristcName`s
+  ActivityMediaName = "Surface Water" # WQP also has biological data and sediment data
+) 
+
+# This code mostly just grabs and renames the most important data columns
+
+conc_small_2 <-  conc_wide_2 %>%
+  select(date = ActivityStartDate,
+         parameter = CharacteristicName,
+         units = ResultMeasure.MeasureUnitCode,
+         siteid = MonitoringLocationIdentifier,
+         org = OrganizationFormalName,
+         org_id = OrganizationIdentifier,
+         time = ActivityStartTime.Time,
+         value = ResultMeasureValue,
+         sample_method = SampleCollectionMethod.MethodName,
+         analytical_method = ResultAnalyticalMethod.MethodName,
+         particle_size = ResultParticleSizeBasisText,
+         date_time = ActivityStartDateTime,
+         media = ActivityMediaName,
+         sample_depth = ActivityDepthHeightMeasure.MeasureValue,
+         sample_depth_unit = ActivityDepthHeightMeasure.MeasureUnitCode,
+         fraction = ResultSampleFractionText,
+         status = ResultStatusIdentifier) %>%
+# Remove trailing white space in labels
+  mutate(units = trimws(units))  
+
+# Add ion name column
+
+conc_meta_2 <- conc_small_2 %>%
+  left_join(., data, by = "siteid") %>%
+  dplyr::mutate(ion = dplyr::case_when(
+    parameter == "Calcium" ~ "Ca",
+    parameter == "Magnesium" ~ "Mg",
+    parameter == "Sodium" ~ "Na",
+    parameter == "Potassium" ~ "K",
+    parameter %in% c("Sulfate", "Sulfate as SO4", "Sulfur Sulfate", "Total Sulfate") ~ "SO4",
+    parameter == "Chloride" ~ "Cl",
+    parameter %in% c("Alkalinity, bicarbonate", "Bicarbonate") ~ "HCO3")
+  ) %>%
+  select(siteid, basin, ion, parameter, date, everything())
+
+# Remove any non mg/l units 
+
+conc_tidy_2 <- conc_meta_2 %>% 
+  filter(units == 'mg/l') %>%
+  mutate(date = ymd(date)) %>%
+  select(date,
+         parameter,
+         ion,
+         siteid,
+         basin,
+         conc = value)
+
+# Summarise to daily, further clean columns 
+conc_daily_2 <- conc_tidy_2 %>%
+  group_by(date, parameter, siteid, basin) %>% 
+  summarize(conc = mean(conc, na.rm = T))
+}
+
+funktest_plzwork<- Funk(data = colorado)
+
+identical(conc_daily, funktest_plzwork)
+```
+
+##### Question 2 
+
+Using the function you developed in Question 1, download and clean water
+quality data for the site IDs listed below:
+
+```{r}
+additional_data <- tibble(siteid = c('USGS-09180000', 'USGS-09180500', 'USGS-09380000'),
+                          basin = c('dolores', 'colorado4', 'colorado5'))
+
+more_data <- Funk(additional_data)
+
+view(more_data)
+```
+
+This output of running the function should look identical in format to
+our original `conc_daily` data set, but for these sites instead.
+
+##### Question 3 
+
+Combine the data pulled in Question 2 with the original data from
+`conc_daily`, so that this data is in a single data frame. Save this
+combined data as `tidied_full_wq.RDS` in the 'data' folder.
+
+```{r}
+
+joined_data <- bind_rows(conc_daily, more_data)
+
+dir.create("data")
+
+saveRDS(joined_data, file = 'data/tidied_full_wq.RDS')
+```
+
+##### Question 4 
+
+We now have a data set of stream water quality data for several sites
+along the Colorado. One potential control on stream chemistry is stream
+discharge. A function in the {dataRetrieval} package that allows you to
+easily download discharge data is `readNWISdv()`. Use this function to
+download daily discharge data for all eight of the sites we are
+interested in. Save the data as an RDS object called called `Q` in the
+data folder: `data/Q.RDS`. 
+
+Arguments needed for `readNWISdv()`: The site numbers are the same as above but
+you need to remove `USGS-` from each site (we have done this for you below).
+Discharge is `parameterCd = 00060` and you should use `renameNWISColumns()` to
+automatically make the column names a little less annoying.
+
+```{r}
+# Reminder! you can use ?readNWISdv to read about how the function works. 
+sites <- colorado %>%
+  #Bind the two datasets to get all 8 sites
+  bind_rows(additional_data) %>%
+  #Grab just the column labeled sites
+  pull(siteid) %>%
+  #Remove the USGS- prefix
+  gsub('USGS-', '', .)
+
+#<<<< YOUR CODE HERE >>>>#
+
+Q <- readNWISdv(
+  siteNumbers = sites,
+  parameterCd = "00060",
+  startDate = "1980-10-01",
+  endDate = "2024-10-01",
+) %>%
+  renameNWISColumns() %>%
+  rename(siteid = site_no)
+
+unique(Q$siteid)
+saveRDS(Q, file = 'data/Q.RDS')
+
+
+#saveRDS(<YOUR OBJECT>, file = 'data/Q.RDS')
+
+# TL;DR... the new version to pull in daily flow data is commented out below and
+# quite different than the current approach. It is very slow still and IMO not
+# worth migrating to yet.
+q_data_new_version <- read_waterdata_daily(monitoring_location_id = sites,
+                     parameter_code = "00060",
+                  time = c("1980-01-01", "2023-09-30")) %>%
+  renameNWISColumns()
+```
+
+
+### Modeling WQ Data {.tabet}
+
+Now we have 'tidy' data sets from our previous lesson, this includes both discharge data and concentration data. Let's look at the data we have. First where is the data?
+
+The two datasets were saved as '.RDS' files. These are almost identical to '.RData' files, but unlike '.RData', '.RDS' cannot store multiple objects, so we used this file type to save a single data frame in each file. To save '.RDS' files we use the function `saveRDS()` and to read '.RDS' files we use `readRDS()`, and assign it to a new environmental variable.
+
+#### Data Load
+
+```{r data readin}
+# read in water quality data saved at the end of assignment 1
+wq <- readRDS('data/tidied_full_wq.RDS')
+
+# create a tibble of site info we will need to use later
+colorado <- tibble(siteid = c('USGS-09034500', 'USGS-09069000',
+                              'USGS-09085000', 'USGS-09095500', 'USGS-09152500'),
+                   basin = c('colorado1', 'eagle',
+                             'roaring', 'colorado3', 'gunnison')) %>%
+  bind_rows(tibble(siteid = c('USGS-09180000', 'USGS-09180500', 'USGS-09380000'),
+                   basin = c('dolores', 'colorado4', 'colorado5')))
+```
+
+#### Site info extraction {.tabset}
+
+We can get site geospatial information for sites within the Water Quality Portal with the `whatWQPsites()` function. Then, we can reduce and rename columns much like we did in the previous assignment (for our own clarity):
+
+```{r}
+site_info <- whatWQPsites(siteid = unique(wq$siteid)) %>%
+  dplyr::select(siteid = MonitoringLocationIdentifier,
+                name = MonitoringLocationName,
+                area = DrainageAreaMeasure.MeasureValue,
+                area.units = DrainageAreaMeasure.MeasureUnitCode,
+                elev = VerticalMeasure.MeasureValue,
+                elev_units = VerticalMeasure.MeasureUnitCode,
+                lat = LatitudeMeasure,
+                long = LongitudeMeasure) %>%
+  distinct() %>% # Distinct just keeps the first of any duplicates. 
+  inner_join(colorado, by = "siteid")
+```
+
+##### Map
+
+Here we use the `sf` package to project the site information data into a geospatial object called a simple feature, or `sf`. The function `st_as_sf` converts the longitude (x) and latitude (y) coordinates into a projected point feature with the EPSG code 4326 (WGS 84). We can then use the `mapview` package and function to look at where these sites are.
+
+```{r}
+# convert site info into an sf object
+site_sf <- site_info %>%
+  st_as_sf(., coords = c('long', 'lat'), crs = 4326)
+
+mapview(site_sf)
+```
+
+So these sites are generally in the Colorado River Basin with increasing watershed size (denoted by 'area' in the point pop-up window).
+
+#### Modelling Data {.tabset}
+
+##### Trend detection?
+
+Now that we know where the data is coming from let's start modelling! The first question we might want to explore is: **Are concentrations of elements changing over time?**. Let's first focus on Calcium in the Dolores River. As with all data work, the first thing you should do is look at your data.
+
+```{r}
+dolores_ca <- wq %>%
+  filter(basin == 'dolores', parameter == 'Calcium') 
+
+ggplot(dolores_ca, aes(x = date, y = conc)) + 
+  geom_point()
+```
+
+##### Adding a trend line with ggplot {.tabset}
+
+`ggplot` has an easy method for adding a trend line to plots (`stat_smooth`). The code below uses a linear model to fit the line:
+
+```{r}
+ggplot(dolores_ca, aes(x = date, y = conc)) + 
+  geom_point() + 
+  stat_smooth(method = 'lm')
+```
+
+... That line looks pretty flat!
+
+###### Linear Models for Trend Detection (the wrong way..).
+
+A very intuitive way to try to detect if there is a long term trend is to use linear models as `ggplot` does. So let's go ahead and write out a model for daily Calcium data using the `lm` function, specifying a model where concentration (`conc`) varies by (`~`) date (`date`).
+
+```{r}
+ca_model <- lm(conc ~ date, data = dolores_ca)
+summary(ca_model)
+```
+
+###### The right way!
+
+Using a linear model for trend detection breaks one of the cardinal rules of linear modelling, namely that each observation is **assumed to be independent of any other observation**. In a time-series like what we are looking at here, yesterday's Calcium concentration is deeply related to today's concentration. So linear models should **never** be used in trend detection on time series data. Instead, we should use the Mann-Kendall test and Tau's Sens Slope.
+
+###### Mann-Kendall test
+
+The Mann Kendall test is a non-parametric test of trends, you can use `?mk.test` to read more about the method, but it only requires an ordered time-series to run. Let's use it here.
+
+```{r}
+dolores_ca <- dolores_ca %>%
+  # Make sure data is arranged by date using `arrange()` 
+  arrange(date)
+
+# use mk.test from the {trend} package
+dolores_mk <- mk.test(dolores_ca$conc)
+
+print(dolores_mk)
+```
+
+The Mann Kendall test is really just a true/false where if the p-value is below some threshold (usually 0.05) then you can be mostly confident that there is a 'real' trend in the data. However it doesn't tell you the slope of that trend. For that you need to use `sens.slope`.
+
+```{r}
+# use sens.slope from the {trend} package
+dolores_slope <- sens.slope(dolores_ca$conc)
+
+dolores_slope
+```
+
+Notice that the sens.slope gives you a slope value, and a p-value (which is the same p-value found in the Mann-Kendall test). For this reason, it is almost always easier to just use `sens.slope` to get both significance and slope.
+
+##### Cleaner output
+
+The output from these models is not organized very nicely. We can use the `tidy()` function from the {broom} package to clean up this output and convert the information into a data frame, with a column for each value/parameter (similar to the outputs from tests used in the {rstatix} package).
+
+```{r}
+tidy(dolores_slope)
+```
+
+Some model objects that get converted using the tidy() function don't include both the p-value and the slope, which is slightly maddening, but we can make our OWN function to do all of this, including running the model:
+
+```{r}
+tidier_sens <- function(data){
+  
+  model <- sens.slope(data)
+  
+  tidy(model) %>%
+    mutate(slope = model$estimates)
+  
+}
+
+tidier_sens(data = dolores_ca$conc)
+```
+
+We now have a statistical confirmation of what the plot already showed us. There is no long-term trend in Calcium concentrations in the Dolores River (denoted by the high p-value, much greater than our usual 0.05 alpha/cut-off).
+
+#### Models everywhere! {.tabset}
+
+We now know how to model data at a single site for a single parameter, but is there an efficient way to do this for ALL sites and ALL parameters?
+
+YES THERE IS!
+
+We will use the magic of `nest()`'ing data to apply our trend models to all of our parameters and sites. First let's alter the data set a little to increase precision in our question.
+
+##### Converting data to late summer annual means
+
+Water chemistry is heavily controlled by seasonality and water flow, so let's try to control for that and summarize our data to only include the low-flow periods of the year. Basically we will be focusing on: **are there trends in low flow concentrations of ions in the stream?**
+
+```{r}
+low_flow <- wq %>%
+  mutate(month = month(date),
+         year = year(date)) %>% # create columns of just month and year
+  filter(month %in% c(8, 9, 10, 11)) %>% # filter later summer months
+  group_by(basin, siteid, parameter, year) %>%
+  summarize(conc = median(conc, na.rm = T)) %>% # calculate annual conc for each site/parameter pair
+  arrange()
+
+ggplot(low_flow, aes(x = year, y = conc, color = basin)) + 
+  geom_point() + 
+  scale_y_log10() + 
+  facet_wrap(~parameter, scales = 'free') + 
+  theme_minimal() + 
+  theme(legend.position ='bottom',
+        legend.direction = 'horizontal') +
+  labs(y = 'Concentration (mg/l)',
+       x = 'Year',
+       color = 'USGS Site')
+```
+
+##### The Magic of nesting {.tabset}
+
+Now we have a few things:
+
+1.  A data set that is winnowed down to just low-flow periods of the year
+
+2.  A function (`tidier_sens`) we can use to look at if there are long-term trends in concentration with Sens slope, then convert the Sens slope output to a data frame
+
+3.  A desire to apply this function to all of our sites and water quality parameters
+
+To accomplish step three, we need to use the magic of `nest()`. Nesting allows us to group data by site and parameter (like with a `group_by` and a `summarize`) and apply models to each site and parameter separately. Effectively nesting bundles (... or nests!) the data into tidy little packets that we can apply the model too. Let's try!
+
+###### Nesting data
+
+```{r}
+low_nest <- low_flow %>%
+  # rename parameter as characteristic... 
+  # model output already has "parameter" as a column name
+  group_by(characteristic = parameter, basin) %>%
+  # nest the grouped data into a new column called
+  # nested_data (default name if not set
+  # manually is `data`)
+  nest(.key = "nested_data") 
+
+low_nest
+```
+
+The above code produces a tibble with three columns: `basin`, `parameter`, and `nested_data`. The `nested_data` column is our nested (or bundled) data for each basin parameter combination. We know this by the '*list*' data type printed under the 'nested_data' column and each row has a 'tibble' nested within it.
+
+For example, to retrieve one of those nested data frames:
+
+```{r}
+# subset my low_nest data to just the data column, 
+# then select just the first nested tibble:
+low_nest$nested_data[[1]]  
+```
+
+###### Modelling over nested data
+
+Now we want to apply our model to each nested data frame. To do this we need to use the `map()` function. Map takes in an x (`nested_data` column) and then a function (in this case `sens.slope`). We use `.x$conc` to indicate that we want to apply the model to the concentration column within each bundled (nested) data frame.
+
+```{r}
+wq_models <- low_nest %>%
+  # create a new column to store the model results of each 'data' row
+  # (which in this case, is also a dataset)
+  mutate(tidy_mods = map(nested_data, ~ tidier_sens(.x$conc))) 
+
+wq_models
+```
+
+Now we have a nested data set AND nested models (that are hard to see). We can look at a single model by indexing it:
+
+```{r}
+# This provides the 15th model summary
+wq_models$tidy_mods[[15]]
+```
+
+But that is a tedious way to look at our model summaries!
+
+Instead, we can use `unnest()` to unravel that data so we have a final data frame that contains model outputs.
+
+```{r}
+wq_mod_summaries <- wq_models %>%
+  unnest(tidy_mods) %>% # separates the nested column into individual columns for each value
+  select(basin, characteristic, p.value, slope) %>%
+  mutate(trend = ifelse(p.value < 0.01, 'yes', 'no')) # create a column telling us whether or not there was a significant trend based on a p-value cut-off of 0.01
+
+wq_mod_summaries
+```
+
+###### Visualizing model output
+
+```{r}
+ggplot(wq_mod_summaries, aes(x = characteristic, y = slope, color = trend)) + 
+  geom_point() + 
+  facet_wrap(~basin, scales = 'free') + 
+  theme_minimal() + 
+  scale_color_manual(values = c('black','green3')) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "bottom") +
+  labs(color = "Significant Trend",
+       x = "",
+       y = "Slope")
+```
+
+#### Assignment {.tabset}
+(worth 10 points)
+
+The above workflow really focuses on trend detection with Sens slope, but here we will focus on an appropriate use of linear models. As such we want to join our discharge data to our water quality data and we want to look at the relationship between Q and WQ.
+
+##### Q1 
+Join discharge and water quality data. (2 pts)
+
+Use `inner_join()` to join our daily discharge data (`Q.RDS`) to our raw water quality data (`tidied_full_wq.RDS`). You want to join by both date and siteid. Remember! the discharge data has site IDs that we had to drop the `USGS-` from, so you will need to add that back in using `paste0`.
+
+```{r}
+wq <- readRDS('data/tidied_full_wq.RDS') 
+q_data <- readRDS('data/Q.RDS') 
+
+q_test3 <- q_data %>%
+  mutate(siteid = paste0("USGS-", siteid)) %>%
+  rename(date = Date)
+
+joined <- inner_join(wq, q_test3, by = c("date", "siteid"))
+
+```
+
+##### Q2 
+Pick any site and ion combination and plot discharge versus ion concentration. What do you see in this relationship? (1 pt)
+
+```{r}
+
+roaring_mg <- joined %>%
+  filter(basin == 'roaring', parameter == 'Magnesium') 
+
+ggplot(roaring_mg, aes(x = date, y = conc)) + 
+  geom_point()
+
+# i see no obvious trend either up nor down
+
+```
+
+##### Q3 
+Time to nest! (1 pt)
+
+Group your data by basin and water quality parameter and nest the concentration and flow data.
+
+```{r}
+
+j_nest <- joined %>%
+  group_by(characteristic = parameter, basin) %>%
+  nest(.key = "nested_data")
+
+```
+
+##### Q4 
+Apply a linear model to the nested data. That is, explore how concentration varies by flow for each parameter. (2 pts)
+
+Use a `map` command like this, `map(data, ~lm(conc ~ q, data = .x))`, to store the raw results of the linear model.
+
+```{r}
+
+j_models <- j_nest %>%
+  mutate(mods = map(nested_data, ~ tidier_sens(.x$conc)))
+
+# the lm function was not working, errors with colorado3, Bicarbonate, and not seeing .x as a valid input
+
+```
+
+##### Q5 
+Clean your model results using `tidy`. (2 pts)
+
+In the object above, you should have a new column called `mods` or something similar containing the "ugly" results of the linear model. Therefore, `tidy()` those mods and store this new, tidier data in another column.
+
+```{r, eval=FALSE}
+
+j_models %>% 
+  mutate(is_lm = map_lgl(mods, ~ inherits(.x, "lm"))) %>% 
+  count(is_lm)
+
+j_models %>% 
+  filter(!map_lgl(mods, ~ inherits(.x, "lm"))) %>% select(basin, characteristic, mods)
+
+j_models %>% 
+  mutate(q_type = map_chr(data, ~ class(.x$q)[1]),
+         conc_type = map_chr(data, ~ class(.x$conc)[1])) %>%
+  filter(q_type != "numeric" | conc_type != "numeric") %>%
+  select(basin, characteristic, q_type, conc_type)
+
+j_models <- j_models %>%
+  mutate(data = map(data, ~ .x %>% mutate(
+    q = as.numeric(q),
+    conc = as.numeric(conc)
+  )))
+
+
+tidy_j <- j_models %>%
+  mutate(valid = map_lgl(mods, ~ inherits(.x "lm"))) %>%
+  filter(valid) %>%
+  mutate(tidied = map(mods, tidy))
+
+#didn't get enough done before break. i don't know why the map fucntion won't work, and ai assistment isn't helping, so imma throw in the towel here :(
+
+
+```
+
+##### Q6 
+Make a visual of your models' summaries that shows both which sites have significant relationships between discharge and concentration and the slope of that relationship. (2 pts)
+
+```{r}
+
+#<<<< YOUR CODE HERE >>>>#
+
+
+```
+
+
